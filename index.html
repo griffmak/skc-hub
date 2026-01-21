@@ -6064,7 +6064,7 @@
           }
 ];
 
-        function App() {
+        function App({ user, onLogout }) {
             const [prospects, setProspects] = useState(() => {
                 // Try to load from localStorage first
                 const saved = localStorage.getItem('skc_prospects');
@@ -6249,7 +6249,7 @@
                                         <div className="font-semibold">{user?.email}</div>
                                     </div>
                                     <button
-                                        onClick={handleLogout}
+                                        onClick={onLogout}
                                         className="px-4 py-2 bg-blue-800 hover:bg-blue-900 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
                                     >
                                         <span>🔒</span>
@@ -7937,7 +7937,7 @@
                 return <LoginScreen />;
             }
 
-            return <App />;
+            return <App user={user} onLogout={handleLogout} />;
         }
 
         ReactDOM.render(<RootApp />, document.getElementById('root'));
