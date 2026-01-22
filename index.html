@@ -6029,11 +6029,17 @@
             const [prospects, setProspects] = useState(() => {
                 // Try to load from localStorage first
                 const saved = localStorage.getItem('skc_prospects');
-                return saved ? JSON.parse(saved) : INITIAL_PROSPECTS;
+                const loadedProspects = saved ? JSON.parse(saved) : INITIAL_PROSPECTS;
+                // Ensure all prospects have lastContacted field
+                return loadedProspects.map(p => ({
+                    ...p,
+                    lastContacted: p.lastContacted || null
+                }));
             });
             const [searchTerm, setSearchTerm] = useState('');
             const [sellerFilter, setSellerFilter] = useState('all');
             const [statusFilter, setStatusFilter] = useState('all');
+            const [contactStatusFilter, setContactStatusFilter] = useState('all'); // all, overdue, fresh
             const [expandedId, setExpandedId] = useState(null);
             const [editingSellerId, setEditingSellerId] = useState(null);
             const [sortConfig, setSortConfig] = useState({ key: 'companyName', direction: 'asc' });
@@ -6047,6 +6053,10 @@
                 const saved = localStorage.getItem('skc_company_notes');
                 return saved ? JSON.parse(saved) : {};
             });
+            const [companyContacts, setCompanyContacts] = useState(() => {
+                const saved = localStorage.getItem('skc_company_contacts');
+                return saved ? JSON.parse(saved) : {};
+            });
 
             // Save to localStorage whenever prospects change
             useEffect(() => {
@@ -6057,6 +6067,11 @@
             useEffect(() => {
                 localStorage.setItem('skc_company_notes', JSON.stringify(companyNotes));
             }, [companyNotes]);
+
+            // Save company contacts to localStorage
+            useEffect(() => {
+                localStorage.setItem('skc_company_contacts', JSON.stringify(companyContacts));
+            }, [companyContacts]);
 
             // Add new company
             const handleAddCompany = (formData) => {
@@ -6081,10 +6096,14 @@
             const handleDeleteCompany = (companyId, companyName) => {
                 if (window.confirm(`Are you sure you want to delete ${companyName}? This action cannot be undone.`)) {
                     setProspects(prev => prev.filter(p => p.id !== companyId));
-                    // Also delete associated notes
+                    // Also delete associated notes and contacts
                     const updatedNotes = { ...companyNotes };
                     delete updatedNotes[companyId];
                     setCompanyNotes(updatedNotes);
+                    
+                    const updatedContacts = { ...companyContacts };
+                    delete updatedContacts[companyId];
+                    setCompanyContacts(updatedContacts);
                 }
             };
 
@@ -6100,6 +6119,44 @@
                     ...prev,
                     [companyId]: notes
                 }));
+                // Auto-update lastContacted when notes are added
+                updateLastContacted(companyId);
+            };
+
+            // Save contacts for a company
+            const saveCompanyContacts = (companyId, contacts) => {
+                setCompanyContacts(prev => ({
+                    ...prev,
+                    [companyId]: contacts
+                }));
+                // Auto-update lastContacted when contacts are added/edited
+                updateLastContacted(companyId);
+            };
+
+            // Update last contacted date
+            const updateLastContacted = (companyId) => {
+                setProspects(prev => prev.map(p =>
+                    p.id === companyId ? { ...p, lastContacted: new Date().toISOString() } : p
+                ));
+            };
+
+            // Calculate days since last contact
+            const getDaysSinceContact = (lastContacted) => {
+                if (!lastContacted) return null;
+                const now = new Date();
+                const last = new Date(lastContacted);
+                const diffTime = Math.abs(now - last);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays;
+            };
+
+            // Get contact status (fresh, stale, cold)
+            const getContactStatus = (lastContacted) => {
+                const days = getDaysSinceContact(lastContacted);
+                if (days === null) return { status: 'never', color: 'gray', badge: '⭕ Never contacted', alert: true };
+                if (days <= 5) return { status: 'fresh', color: 'green', badge: `${days}d ago 🟢`, alert: false };
+                if (days <= 14) return { status: 'stale', color: 'yellow', badge: `${days}d ago ⚠️`, alert: true };
+                return { status: 'cold', color: 'red', badge: `${days}d ago ❄️`, alert: true };
             };
 
             // Update seller for a prospect
@@ -6119,7 +6176,18 @@
                                         p.skcNotes.toLowerCase().includes(searchTerm.toLowerCase());
                     const matchesSeller = sellerFilter === 'all' || p.seller === sellerFilter;
                     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
-                    return matchesSearch && matchesSeller && matchesStatus;
+                    
+                    // Contact status filter
+                    let matchesContactStatus = true;
+                    if (contactStatusFilter === 'overdue') {
+                        const days = getDaysSinceContact(p.lastContacted);
+                        matchesContactStatus = days === null || days > 5;
+                    } else if (contactStatusFilter === 'fresh') {
+                        const days = getDaysSinceContact(p.lastContacted);
+                        matchesContactStatus = days !== null && days <= 5;
+                    }
+                    
+                    return matchesSearch && matchesSeller && matchesStatus && matchesContactStatus;
                 });
 
                 // Sort
@@ -6145,7 +6213,7 @@
                 });
 
                 return filtered;
-            }, [prospects, searchTerm, sellerFilter, statusFilter, sortConfig]);
+            }, [prospects, searchTerm, sellerFilter, statusFilter, contactStatusFilter, sortConfig]);
 
             // Calculate stats
             const stats = useMemo(() => {
@@ -6164,7 +6232,29 @@
                     'HOLD': prospects.filter(p => p.status === 'HOLD').length,
                     'Declined': prospects.filter(p => p.status === 'Declined').length,
                 };
-                return { total, bySeller, byStatus };
+                
+                // Contact status tracking
+                const byContactStatus = {
+                    overdue: prospects.filter(p => {
+                        const days = getDaysSinceContact(p.lastContacted);
+                        return days === null || days > 5;
+                    }).length,
+                    fresh: prospects.filter(p => {
+                        const days = getDaysSinceContact(p.lastContacted);
+                        return days !== null && days <= 5;
+                    }).length,
+                    stale: prospects.filter(p => {
+                        const days = getDaysSinceContact(p.lastContacted);
+                        return days !== null && days > 5 && days <= 14;
+                    }).length,
+                    cold: prospects.filter(p => {
+                        const days = getDaysSinceContact(p.lastContacted);
+                        return days !== null && days > 14;
+                    }).length,
+                    never: prospects.filter(p => !p.lastContacted).length
+                };
+                
+                return { total, bySeller, byStatus, byContactStatus };
             }, [prospects]);
 
             const handleSort = (key) => {
@@ -6348,6 +6438,37 @@
 
                     {activeTab === 'prospects' && (
                         <div className="max-w-7xl mx-auto px-4 py-8">
+                            {/* Needs Follow-Up Alert */}
+                            {stats.byContactStatus.overdue > 0 && (
+                                <div className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 border-l-4 border-orange-500 rounded-lg shadow-md p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-4xl">⚠️</div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-gray-900">Needs Follow-Up</h3>
+                                                <p className="text-gray-700 mt-1">
+                                                    <span className="text-2xl font-bold text-orange-600">{stats.byContactStatus.overdue}</span>
+                                                    <span className="ml-2">
+                                                        {stats.byContactStatus.overdue === 1 ? 'company hasn\'t' : 'companies haven\'t'} been contacted in 5+ days
+                                                    </span>
+                                                </p>
+                                                <div className="mt-2 text-sm text-gray-600">
+                                                    <span className="font-semibold text-red-600">{stats.byContactStatus.cold}</span> cold (15+ days) • 
+                                                    <span className="ml-2 font-semibold text-yellow-600">{stats.byContactStatus.stale}</span> stale (6-14 days) • 
+                                                    <span className="ml-2 font-semibold text-gray-600">{stats.byContactStatus.never}</span> never contacted
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setContactStatusFilter('overdue')}
+                                            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold shadow-lg hover:shadow-xl transition-all"
+                                        >
+                                            View All →
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Dashboard Stats */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                                 <div className="bg-white rounded-lg shadow p-6">
@@ -6459,6 +6580,41 @@
                                         </select>
                                     </div>
                                 </div>
+                                
+                                {/* Quick Filter Buttons */}
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => setContactStatusFilter('all')}
+                                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                                            contactStatusFilter === 'all'
+                                                ? 'bg-blue-600 text-white shadow-md'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        All: {stats.total}
+                                    </button>
+                                    <button
+                                        onClick={() => setContactStatusFilter('overdue')}
+                                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                                            contactStatusFilter === 'overdue'
+                                                ? 'bg-orange-600 text-white shadow-md'
+                                                : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+                                        }`}
+                                    >
+                                        ⚠️ Needs Follow-up: {stats.byContactStatus.overdue}
+                                    </button>
+                                    <button
+                                        onClick={() => setContactStatusFilter('fresh')}
+                                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                                            contactStatusFilter === 'fresh'
+                                                ? 'bg-green-600 text-white shadow-md'
+                                                : 'bg-green-50 text-green-700 hover:bg-green-100'
+                                        }`}
+                                    >
+                                        🟢 Fresh: {stats.byContactStatus.fresh}
+                                    </button>
+                                </div>
+                                
                                 <div className="mt-3 text-sm text-gray-500">
                                     Showing {filteredProspects.length} of {prospects.length} prospects
                                 </div>
@@ -6527,6 +6683,26 @@
                                                                     {companyNotes[prospect.id].length} {companyNotes[prospect.id].length === 1 ? 'note' : 'notes'}
                                                                 </span>
                                                             )}
+                                                            {companyContacts[prospect.id] && companyContacts[prospect.id].length > 0 && (
+                                                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                                                    {companyContacts[prospect.id].length} {companyContacts[prospect.id].length === 1 ? 'contact' : 'contacts'}
+                                                                </span>
+                                                            )}
+                                                            <div className="mt-1">
+                                                                {(() => {
+                                                                    const contactStatus = getContactStatus(prospect.lastContacted);
+                                                                    return (
+                                                                        <span className={`text-xs px-2 py-1 rounded-full ${
+                                                                            contactStatus.status === 'never' ? 'bg-gray-100 text-gray-600' :
+                                                                            contactStatus.status === 'fresh' ? 'bg-green-50 text-green-700' :
+                                                                            contactStatus.status === 'stale' ? 'bg-yellow-50 text-yellow-700' :
+                                                                            'bg-red-50 text-red-700'
+                                                                        }`}>
+                                                                            {contactStatus.badge}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <SellerEditor prospect={prospect} />
@@ -7887,11 +8063,13 @@
                         <CompanyNotesModal 
                             company={selectedCompany}
                             notes={companyNotes[selectedCompany.id] || []}
+                            contacts={companyContacts[selectedCompany.id] || []}
                             onClose={() => {
                                 setShowNotesModal(false);
                                 setSelectedCompany(null);
                             }}
                             onSaveNotes={saveCompanyNotes}
+                            onSaveContacts={saveCompanyContacts}
                         />
                     )}
                 </div>
@@ -7899,12 +8077,27 @@
         }
 
         // Company Notes Modal Component
-        function CompanyNotesModal({ company, notes, onClose, onSaveNotes }) {
+        function CompanyNotesModal({ company, notes, contacts, onClose, onSaveNotes, onSaveContacts }) {
             const [localNotes, setLocalNotes] = React.useState(notes);
+            const [localContacts, setLocalContacts] = React.useState(contacts);
             const [newNote, setNewNote] = React.useState('');
             const [editingNoteId, setEditingNoteId] = React.useState(null);
             const [editText, setEditText] = React.useState('');
-
+            const [activeTab, setActiveTab] = React.useState('notes');
+            
+            // Contact form state
+            const [showContactForm, setShowContactForm] = React.useState(false);
+            const [editingContactId, setEditingContactId] = React.useState(null);
+            const [contactForm, setContactForm] = React.useState({
+                name: '',
+                title: '',
+                email: '',
+                phone: '',
+                linkedin: '',
+                decisionMakerType: '',
+                lastContacted: '',
+                notes: ''
+            });
             const handleAddNote = () => {
                 if (newNote.trim()) {
                     const note = {
@@ -7939,7 +8132,90 @@
 
             const handleSave = () => {
                 onSaveNotes(company.id, localNotes);
+                onSaveContacts(company.id, localContacts);
                 onClose();
+            };
+
+            // Contact management functions
+            const handleAddContact = () => {
+                if (!contactForm.name || !contactForm.title) {
+                    alert('Name and Title are required');
+                    return;
+                }
+                
+                const newContact = {
+                    id: Date.now(),
+                    ...contactForm,
+                    createdAt: new Date().toISOString()
+                };
+                
+                setLocalContacts([...localContacts, newContact]);
+                setContactForm({
+                    name: '',
+                    title: '',
+                    email: '',
+                    phone: '',
+                    linkedin: '',
+                    decisionMakerType: '',
+                    lastContacted: '',
+                    notes: ''
+                });
+                setShowContactForm(false);
+            };
+
+            const handleEditContact = (contact) => {
+                setEditingContactId(contact.id);
+                setContactForm({
+                    name: contact.name,
+                    title: contact.title,
+                    email: contact.email || '',
+                    phone: contact.phone || '',
+                    linkedin: contact.linkedin || '',
+                    decisionMakerType: contact.decisionMakerType || '',
+                    lastContacted: contact.lastContacted || '',
+                    notes: contact.notes || ''
+                });
+                setShowContactForm(true);
+            };
+
+            const handleUpdateContact = () => {
+                if (!contactForm.name || !contactForm.title) {
+                    alert('Name and Title are required');
+                    return;
+                }
+                
+                setLocalContacts(localContacts.map(c =>
+                    c.id === editingContactId ? { ...c, ...contactForm } : c
+                ));
+                
+                setContactForm({
+                    name: '',
+                    title: '',
+                    email: '',
+                    phone: '',
+                    linkedin: '',
+                    decisionMakerType: '',
+                    lastContacted: '',
+                    notes: ''
+                });
+                setEditingContactId(null);
+                setShowContactForm(false);
+            };
+
+            const handleDeleteContact = (contactId) => {
+                if (confirm('Delete this contact?')) {
+                    setLocalContacts(localContacts.filter(c => c.id !== contactId));
+                }
+            };
+
+            const getDecisionMakerColor = (type) => {
+                const colors = {
+                    'Decision Maker': 'bg-purple-100 text-purple-800',
+                    'Influencer': 'bg-blue-100 text-blue-800',
+                    'Gatekeeper': 'bg-yellow-100 text-yellow-800',
+                    'Champion': 'bg-green-100 text-green-800'
+                };
+                return colors[type] || 'bg-gray-100 text-gray-600';
             };
 
             return (
@@ -7985,23 +8261,57 @@
                                 </div>
                             </div>
 
-                            {/* Add Note Section */}
-                            <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Add New Note</label>
-                                <textarea
-                                    value={newNote}
-                                    onChange={(e) => setNewNote(e.target.value)}
-                                    rows="3"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Enter note about conversation, meeting, or update..."
-                                />
-                                <div className="flex justify-end mt-2">
+                            {/* Tabs */}
+                            <div className="border-b border-gray-200 mb-6">
+                                <div className="flex space-x-8">
                                     <button
-                                        onClick={handleAddNote}
-                                        disabled={!newNote.trim()}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                        onClick={() => setActiveTab('notes')}
+                                        className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                                            activeTab === 'notes'
+                                                ? 'border-blue-600 text-blue-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
                                     >
-                                        Add Note
+                                        📝 Notes ({localNotes.length})
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('contacts')}
+                                        className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                                            activeTab === 'contacts'
+                                                ? 'border-blue-600 text-blue-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        👥 Contacts ({localContacts.length})
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Notes Tab Content */}
+                            {activeTab === 'notes' && (
+                                <>
+                                    {/* Add Note Section */}
+                                    <div className="mb-6">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Add New Note</label>
+                                        <textarea
+                                            value={newNote}
+                                            onChange={(e) => setNewNote(e.target.value)}
+                                            rows="3"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Enter note about conversation, meeting, or update..."
+                                        />
+                                        <div className="flex justify-end mt-2">
+                                            <button
+                                                onClick={handleAddNote}
+                                                disabled={!newNote.trim()}
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                            >
+                                                Add Note
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Notes History - continuing below */}
                                     </button>
                                 </div>
                             </div>
@@ -8076,6 +8386,209 @@
                                     </div>
                                 )}
                             </div>
+                                </>
+                            )}
+
+                            {/* Contacts Tab Content */}
+                            {activeTab === 'contacts' && (
+                                <div>
+                                    {/* Add/Edit Contact Form */}
+                                    {showContactForm ? (
+                                        <div className="mb-6 p-4 border border-blue-200 bg-blue-50 rounded-lg">
+                                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                                {editingContactId ? 'Edit Contact' : 'Add New Contact'}
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Name <span className="text-red-600">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={contactForm.name}
+                                                        onChange={(e) => setContactForm({...contactForm, name: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="John Smith"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Title <span className="text-red-600">*</span>
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={contactForm.title}
+                                                        onChange={(e) => setContactForm({...contactForm, title: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="VP of Marketing"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                                    <input
+                                                        type="email"
+                                                        value={contactForm.email}
+                                                        onChange={(e) => setContactForm({...contactForm, email: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="john@company.com"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                                    <input
+                                                        type="tel"
+                                                        value={contactForm.phone}
+                                                        onChange={(e) => setContactForm({...contactForm, phone: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="(555) 123-4567"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn</label>
+                                                    <input
+                                                        type="url"
+                                                        value={contactForm.linkedin}
+                                                        onChange={(e) => setContactForm({...contactForm, linkedin: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="linkedin.com/in/..."
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Role Type</label>
+                                                    <select
+                                                        value={contactForm.decisionMakerType}
+                                                        onChange={(e) => setContactForm({...contactForm, decisionMakerType: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    >
+                                                        <option value="">Select role...</option>
+                                                        <option value="Decision Maker">Decision Maker</option>
+                                                        <option value="Influencer">Influencer</option>
+                                                        <option value="Gatekeeper">Gatekeeper</option>
+                                                        <option value="Champion">Champion</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                                    <textarea
+                                                        value={contactForm.notes}
+                                                        onChange={(e) => setContactForm({...contactForm, notes: e.target.value})}
+                                                        rows="2"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        placeholder="Any relevant details about this contact..."
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-end gap-2 mt-4">
+                                                <button
+                                                    onClick={() => {
+                                                        setShowContactForm(false);
+                                                        setEditingContactId(null);
+                                                        setContactForm({
+                                                            name: '', title: '', email: '', phone: '', linkedin: '',
+                                                            decisionMakerType: '', lastContacted: '', notes: ''
+                                                        });
+                                                    }}
+                                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={editingContactId ? handleUpdateContact : handleAddContact}
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                                >
+                                                    {editingContactId ? 'Update Contact' : 'Add Contact'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="mb-6">
+                                            <button
+                                                onClick={() => setShowContactForm(true)}
+                                                className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-all"
+                                            >
+                                                + Add New Contact
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Contacts List */}
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                                            Contacts ({localContacts.length})
+                                        </h3>
+                                        
+                                        {localContacts.length === 0 ? (
+                                            <div className="text-center py-8 text-gray-500">
+                                                <div className="text-4xl mb-2">👥</div>
+                                                <div className="text-sm">No contacts yet. Add your first contact above.</div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {localContacts.map((contact) => (
+                                                    <div key={contact.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition bg-white">
+                                                        <div className="flex justify-between items-start mb-3">
+                                                            <div>
+                                                                <h4 className="font-semibold text-gray-900">{contact.name}</h4>
+                                                                <p className="text-sm text-gray-600">{contact.title}</p>
+                                                                {contact.decisionMakerType && (
+                                                                    <span className={`mt-2 inline-block text-xs px-2 py-1 rounded-full ${getDecisionMakerColor(contact.decisionMakerType)}`}>
+                                                                        {contact.decisionMakerType}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex space-x-2">
+                                                                <button
+                                                                    onClick={() => handleEditContact(contact)}
+                                                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                                                >
+                                                                    Edit
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteContact(contact.id)}
+                                                                    className="text-xs text-red-600 hover:text-red-800"
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2 text-sm">
+                                                            {contact.email && (
+                                                                <div>
+                                                                    <span className="text-gray-500">Email:</span>
+                                                                    <a href={`mailto:${contact.email}`} className="ml-2 text-blue-600 hover:underline">
+                                                                        {contact.email}
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                            {contact.phone && (
+                                                                <div>
+                                                                    <span className="text-gray-500">Phone:</span>
+                                                                    <a href={`tel:${contact.phone}`} className="ml-2 text-blue-600 hover:underline">
+                                                                        {contact.phone}
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                            {contact.linkedin && (
+                                                                <div className="col-span-2">
+                                                                    <span className="text-gray-500">LinkedIn:</span>
+                                                                    <a href={contact.linkedin} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600 hover:underline">
+                                                                        View Profile →
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {contact.notes && (
+                                                            <div className="mt-3 pt-3 border-t border-gray-100">
+                                                                <p className="text-sm text-gray-600">{contact.notes}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Footer Actions */}
                             <div className="flex justify-end gap-2 pt-4 border-t mt-6">
