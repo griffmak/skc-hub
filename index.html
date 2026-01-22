@@ -21,6 +21,25 @@
             font-weight: 600;
             text-transform: uppercase;
         }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 0.5rem;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -28,77 +47,19 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-// ============================================
-        // AUTH0 CONFIGURATION - PASTE YOUR CREDENTIALS HERE
-        // ============================================
-        const AUTH0_DOMAIN = "dev-hihq4ccw7laowh0e.us.auth0.com";  
-        const AUTH0_CLIENT_ID = "IsrDz0J0rZcFGOxykV6ya3gSyvd4lj9l";  
-        // ============================================
+
+        // Auth0 Configuration
+        const AUTH0_DOMAIN = "dev-hihq4ccw7laowh0e.us.auth0.com";
+        const AUTH0_CLIENT_ID = "IsrDz0J0rZcFGOxykV6ya3gSyvd4lj9l";
+
         // Prospects data will be loaded here
-        // ============================================
-        // AUTH0 LOGIN COMPONENT
-        // ============================================
-        function LoginScreen() {
-            const [isLoading, setIsLoading] = useState(false);
-
-            const handleLogin = async () => {
-                setIsLoading(true);
-                try {
-                    await window.auth0Client.loginWithRedirect({
-                        authorizationParams: {
-                            redirect_uri: window.location.origin
-                        }
-                    });
-                } catch (error) {
-                    console.error('Login error:', error);
-                    alert('Login failed: ' + error.message);
-                    setIsLoading(false);
-                }
-            };
-
-            return (
-                <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-600 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-                        <div className="text-center mb-8">
-                            <div className="text-6xl mb-4">🔒</div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">SKC Intelligence Hub</h1>
-                            <p className="text-gray-600">Secure Access - Team Members Only</p>
-                        </div>
-
-                        <button
-                            onClick={handleLogin}
-                            disabled={isLoading}
-                            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-semibold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isLoading ? (
-                                <span className="flex items-center justify-center">
-                                    <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Logging in...
-                                </span>
-                            ) : (
-                                '🔓 Login with Auth0'
-                            )}
-                        </button>
-
-                        <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-                            <p className="text-xs text-gray-500">
-                                Secure authentication powered by Auth0
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
         const INITIAL_PROSPECTS = [
   {
     "id": 1,
     "companyName": "Genesis Health Clubs",
     "originalName": "Genesis Health Clubs (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Wichita, KS",
     "employees": 1300,
     "kcEmployees": null,
@@ -111,7 +72,7 @@
     "companyName": "Thermo Fisher Scientific",
     "originalName": "Thermo Fisher Scientific  (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Waltham, MA",
     "employees": 122000,
     "kcEmployees": null,
@@ -124,7 +85,7 @@
     "companyName": "Revolut",
     "originalName": "Revolut (MG)",
     "seller": "MG",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "United Kingom",
     "employees": 7500,
     "kcEmployees": null,
@@ -137,7 +98,7 @@
     "companyName": "Paysafe",
     "originalName": "Paysafe (MG)",
     "seller": "MG",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "United Kingdom ",
     "employees": 3200,
     "kcEmployees": null,
@@ -150,7 +111,7 @@
     "companyName": "Yanmar Corporation",
     "originalName": "Yanmar Corporation (Hipower Systems) (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Tokyo, Japan/Adairsville, GA",
     "employees": 1236,
     "kcEmployees": null,
@@ -163,7 +124,7 @@
     "companyName": "Marubeni Corporation",
     "originalName": "Marubeni Corporation (Creekstone Farms) (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Tokyo, Japan",
     "employees": 4300,
     "kcEmployees": null,
@@ -176,7 +137,7 @@
     "companyName": "Turo",
     "originalName": "Turo (MG)",
     "seller": "MG",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "San Francisco, CA",
     "employees": 931,
     "kcEmployees": null,
@@ -189,7 +150,7 @@
     "companyName": "Odoo",
     "originalName": "Odoo (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Ramillies, Belgium/ San Francisco, CA",
     "employees": 4600,
     "kcEmployees": null,
@@ -202,7 +163,7 @@
     "companyName": "Forvis Mazars",
     "originalName": "Forvis Mazars (SL)*",
     "seller": "SL",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "Paris, France / Asheville, NC",
     "employees": 7000,
     "kcEmployees": null,
@@ -215,7 +176,7 @@
     "companyName": "American Century Investments",
     "originalName": "American Century Investments (AD)*",
     "seller": "AD",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "New York City, NY",
     "employees": 1400,
     "kcEmployees": null,
@@ -228,7 +189,7 @@
     "companyName": "Fuchs",
     "originalName": "Fuchs (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Manheim, Germany / Harvey, IL",
     "employees": 6104,
     "kcEmployees": null,
@@ -241,7 +202,7 @@
     "companyName": "C2FO",
     "originalName": "C2FO (SL)",
     "seller": "SL",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Leawood, KS",
     "employees": 734,
     "kcEmployees": null,
@@ -254,7 +215,7 @@
     "companyName": "Buc ees",
     "originalName": "Buc-ee's (SL)",
     "seller": "SL",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Lane Jackson, TX",
     "employees": 2200,
     "kcEmployees": null,
@@ -267,7 +228,7 @@
     "companyName": "Lockton Companies",
     "originalName": "Lockton Companies (MG)",
     "seller": "MG",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Kansas City, MO",
     "employees": 8300,
     "kcEmployees": null,
@@ -280,7 +241,7 @@
     "companyName": "HR Block",
     "originalName": "H&R Block (SL)*",
     "seller": "SL",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 70000,
     "kcEmployees": null,
@@ -293,7 +254,7 @@
     "companyName": "Kubota",
     "originalName": "Kubota (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Osaka, Japan ",
     "employees": 38291,
     "kcEmployees": null,
@@ -306,7 +267,7 @@
     "companyName": "JE Dunn",
     "originalName": "JE Dunn (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 3500,
     "kcEmployees": null,
@@ -319,7 +280,7 @@
     "companyName": "Hills Pet Nutrition",
     "originalName": "Hills Pet Nutrition (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Topeka, KS",
     "employees": 3300,
     "kcEmployees": null,
@@ -332,7 +293,7 @@
     "companyName": "Azuria Water Solutions",
     "originalName": "Azuria Water Solutions (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chesterfield, MO",
     "employees": 9000,
     "kcEmployees": null,
@@ -345,7 +306,7 @@
     "companyName": "Tractor Supply Company",
     "originalName": "Tractor Supply Company (MG)",
     "seller": "MG",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Brentwood, TN",
     "employees": 46000,
     "kcEmployees": null,
@@ -358,7 +319,7 @@
     "companyName": "Upfield Foods",
     "originalName": "Upfield Foods (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Amsterdam, Netherlands / Hackensack, NJ",
     "employees": 4800,
     "kcEmployees": null,
@@ -371,7 +332,7 @@
     "companyName": "Arvest Bank",
     "originalName": "Arvest Bank (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Bentonville, AK",
     "employees": 5300,
     "kcEmployees": null,
@@ -384,7 +345,7 @@
     "companyName": "Cboe",
     "originalName": "Cboe (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, IL",
     "employees": 1647,
     "kcEmployees": null,
@@ -397,7 +358,7 @@
     "companyName": "CBIZ",
     "originalName": "CBIZ (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Cleveland, OH",
     "employees": 6700,
     "kcEmployees": null,
@@ -410,7 +371,7 @@
     "companyName": "Equipmentshare",
     "originalName": "Equipmentshare (Drew) HOLD",
     "seller": "Special",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Columbia, MO",
     "employees": 4000,
     "kcEmployees": null,
@@ -423,7 +384,7 @@
     "companyName": "Bread Financial",
     "originalName": "Bread Financial (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Columbus, OH",
     "employees": 7000,
     "kcEmployees": null,
@@ -436,7 +397,7 @@
     "companyName": "Optum",
     "originalName": "Optum (MG + Goldstein) ",
     "seller": "MG",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Eden Prairie, MN",
     "employees": 84000,
     "kcEmployees": null,
@@ -449,7 +410,7 @@
     "companyName": "McCownGordon Construction",
     "originalName": "McCownGordon Construction (MG)",
     "seller": "MG",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 466,
     "kcEmployees": null,
@@ -462,7 +423,7 @@
     "companyName": "HNTB",
     "originalName": "HNTB (SL)*",
     "seller": "SL",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 7051,
     "kcEmployees": null,
@@ -488,7 +449,7 @@
     "companyName": "Overstock.com",
     "originalName": "Overstock.com (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Midvale, UT",
     "employees": 1100,
     "kcEmployees": null,
@@ -501,7 +462,7 @@
     "companyName": "Medline Industries",
     "originalName": "Medline Industries (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Northfield, Il",
     "employees": 36000,
     "kcEmployees": null,
@@ -514,7 +475,7 @@
     "companyName": "Russell Stover Chocolates",
     "originalName": "Russell Stover Chocolates* HOLD ",
     "seller": "Unassigned",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Kansas City, MO",
     "employees": 3000,
     "kcEmployees": null,
@@ -527,7 +488,7 @@
     "companyName": "The Scoular Company",
     "originalName": "The Scoular Company (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Omaha, NE",
     "employees": 1400,
     "kcEmployees": null,
@@ -540,7 +501,7 @@
     "companyName": "Thrivent",
     "originalName": "Thrivent* HOLD",
     "seller": "Unassigned",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Minneapolis, MN ",
     "employees": 8200,
     "kcEmployees": null,
@@ -553,7 +514,7 @@
     "companyName": "Husqvarna",
     "originalName": "Husqvarna (SL)",
     "seller": "SL",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Stockholm, Sweden/Charlotte, NC",
     "employees": 13800,
     "kcEmployees": null,
@@ -566,7 +527,7 @@
     "companyName": "Cargill",
     "originalName": "Cargill (SL)*",
     "seller": "SL",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "Wayzata, MN",
     "employees": 155000,
     "kcEmployees": null,
@@ -579,7 +540,7 @@
     "companyName": "Zaxbys",
     "originalName": "Zaxby's (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Athens, GA",
     "employees": 8600,
     "kcEmployees": null,
@@ -592,7 +553,7 @@
     "companyName": "Rackspace",
     "originalName": "Rackspace (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Windcrest, TX",
     "employees": 7700,
     "kcEmployees": null,
@@ -605,7 +566,7 @@
     "companyName": "CJ Logistics",
     "originalName": "CJ Logistics (SL)*",
     "seller": "SL",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "Seould, South Korea/Des Plaines, Illinois",
     "employees": 2822,
     "kcEmployees": null,
@@ -618,7 +579,7 @@
     "companyName": "Xplor Technologies",
     "originalName": "Xplor Technologies (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Atlanta, GA",
     "employees": 2100,
     "kcEmployees": null,
@@ -631,7 +592,7 @@
     "companyName": "Menards",
     "originalName": "Menards (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Eau Claire, WI",
     "employees": 45000,
     "kcEmployees": null,
@@ -644,7 +605,7 @@
     "companyName": "Aldi",
     "originalName": "Aldi (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Essen, Germany/ Batavia, Il",
     "employees": 20000,
     "kcEmployees": null,
@@ -657,7 +618,7 @@
     "companyName": "Scheels",
     "originalName": "Scheels (AD?)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Fargo, ND",
     "employees": 8000,
     "kcEmployees": null,
@@ -670,7 +631,7 @@
     "companyName": "Ford Motor Company",
     "originalName": "Ford Motor Company (MG)",
     "seller": "MG",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Kansas City, MO",
     "employees": 177000,
     "kcEmployees": null,
@@ -683,7 +644,7 @@
     "companyName": "KBP Brands",
     "originalName": "KBP Brands (SL)",
     "seller": "SL",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Leawood, KS",
     "employees": 15000,
     "kcEmployees": null,
@@ -696,7 +657,7 @@
     "companyName": "Tallgrass Energy",
     "originalName": "Tallgrass Energy (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Leawood, KS",
     "employees": 784,
     "kcEmployees": null,
@@ -709,7 +670,7 @@
     "companyName": "Lumen Technologies",
     "originalName": "Lumen Technologies (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Monroe, LA",
     "employees": 51000,
     "kcEmployees": null,
@@ -722,7 +683,7 @@
     "companyName": "Garmin",
     "originalName": "Garmin (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Olathe, KS",
     "employees": 19900,
     "kcEmployees": null,
@@ -735,7 +696,7 @@
     "companyName": "Keyence",
     "originalName": "Keyence (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Osaka, Japan / Itasca, IL",
     "employees": 12286,
     "kcEmployees": null,
@@ -748,7 +709,7 @@
     "companyName": "HCA Midwest Health",
     "originalName": "HCA Midwest Health (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 10000,
     "kcEmployees": null,
@@ -761,7 +722,7 @@
     "companyName": "Databricks",
     "originalName": "Databricks (AD)",
     "seller": "AD",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "San Francisco, CA",
     "employees": 5500,
     "kcEmployees": null,
@@ -774,7 +735,7 @@
     "companyName": "POET Ethanol Projects",
     "originalName": "POET Ethanol Projects (AD)",
     "seller": "AD",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Sioux Falls, SC",
     "employees": 2400,
     "kcEmployees": null,
@@ -787,7 +748,7 @@
     "companyName": "Midco",
     "originalName": "Midco (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Sioux Falls, SD",
     "employees": 1100,
     "kcEmployees": null,
@@ -800,7 +761,7 @@
     "companyName": "Bass Pro Shops",
     "originalName": "Bass Pro Shops (MG)*",
     "seller": "MG",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "Springfield, MO",
     "employees": 40000,
     "kcEmployees": null,
@@ -813,7 +774,7 @@
     "companyName": "Boehringer Ingelheim Animal Health",
     "originalName": "Boehringer Ingelheim Animal Health (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "St. Joseph, MO",
     "employees": 3000,
     "kcEmployees": null,
@@ -826,7 +787,7 @@
     "companyName": "Bayer Crop Science",
     "originalName": "Bayer Crop Science (AD)*",
     "seller": "AD",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "St. Louis, MO",
     "employees": 101369,
     "kcEmployees": null,
@@ -839,7 +800,7 @@
     "companyName": "Kforce",
     "originalName": "Kforce (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Tampa Bay, FL",
     "employees": 3500,
     "kcEmployees": null,
@@ -852,7 +813,7 @@
     "companyName": "JD Sports",
     "originalName": "JD Sports (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Bury, United Kingdom",
     "employees": 80000,
     "kcEmployees": null,
@@ -865,7 +826,7 @@
     "companyName": "Billcom",
     "originalName": "Bill.com (MG/AD)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "San Jose, CA",
     "employees": 3000,
     "kcEmployees": null,
@@ -878,7 +839,7 @@
     "companyName": "SafetyCulture",
     "originalName": "SafetyCulture (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "New South Wales, Australia/Kansas City, MO ",
     "employees": 800,
     "kcEmployees": null,
@@ -891,7 +852,7 @@
     "companyName": "TreviPay",
     "originalName": "TreviPay (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 844,
     "kcEmployees": null,
@@ -904,7 +865,7 @@
     "companyName": "SSC",
     "originalName": "SS&C (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Windsor, CT",
     "employees": 27000,
     "kcEmployees": null,
@@ -917,7 +878,7 @@
     "companyName": "Euronet Worldwide",
     "originalName": "Euronet Worldwide (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Leawood, KS",
     "employees": 8100,
     "kcEmployees": null,
@@ -930,7 +891,7 @@
     "companyName": "Terracon",
     "originalName": "Terracon (SL)",
     "seller": "SL",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Olathe, KS",
     "employees": 6000,
     "kcEmployees": null,
@@ -943,7 +904,7 @@
     "companyName": "SelectQuote",
     "originalName": "SelectQuote (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 2400,
     "kcEmployees": null,
@@ -956,7 +917,7 @@
     "companyName": "Spirit Aerosystems",
     "originalName": "Spirit Aerosystems (SL)",
     "seller": "SL",
-    "status": "Cold",
+    "status": "Outreach",
     "hq": "Wichita, KS",
     "employees": 18235,
     "kcEmployees": null,
@@ -969,7 +930,7 @@
     "companyName": "Evergy",
     "originalName": "Evergy (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO\u00a0",
     "employees": 4660,
     "kcEmployees": null,
@@ -982,7 +943,7 @@
     "companyName": "Fidelity Security Life Insurance",
     "originalName": "Fidelity Security Life Insurance (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 77,
     "kcEmployees": null,
@@ -995,7 +956,7 @@
     "companyName": "TranSystems",
     "originalName": "TranSystems (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO\u00a0",
     "employees": 1500,
     "kcEmployees": null,
@@ -1008,7 +969,7 @@
     "companyName": "Tension Corporation",
     "originalName": "Tension Corporation (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 1253,
     "kcEmployees": null,
@@ -1021,7 +982,7 @@
     "companyName": "Packer Fastener",
     "originalName": "Packer Fastener (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Ashwaubenon, WI\u00a0",
     "employees": 160,
     "kcEmployees": null,
@@ -1034,7 +995,7 @@
     "companyName": "Ferrellgas",
     "originalName": "Ferrellgas (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 1700,
     "kcEmployees": null,
@@ -1047,7 +1008,7 @@
     "companyName": "Principal Financial",
     "originalName": "Principal Financial (AD)",
     "seller": "AD",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Des Moines, IA",
     "employees": 19800,
     "kcEmployees": null,
@@ -1060,7 +1021,7 @@
     "companyName": "Burns and McDonnell",
     "originalName": "Burns and McDonnell (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 13500,
     "kcEmployees": null,
@@ -1073,7 +1034,7 @@
     "companyName": "Airshare",
     "originalName": "Airshare (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 600,
     "kcEmployees": null,
@@ -1086,7 +1047,7 @@
     "companyName": "WireCo",
     "originalName": "WireCo (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Prairie Village, KS",
     "employees": 4000,
     "kcEmployees": null,
@@ -1099,7 +1060,7 @@
     "companyName": "CommunityAmerica Credit Union",
     "originalName": "CommunityAmerica Credit Union (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lenexa, KS",
     "employees": 720,
     "kcEmployees": null,
@@ -1112,7 +1073,7 @@
     "companyName": "Henderson Engineers",
     "originalName": "Henderson Engineers (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lenexa, KS",
     "employees": 1000,
     "kcEmployees": null,
@@ -1125,7 +1086,7 @@
     "companyName": "National Beef",
     "originalName": "National Beef (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 9800,
     "kcEmployees": null,
@@ -1138,7 +1099,7 @@
     "companyName": "Jack Henry",
     "originalName": "Jack Henry (AD)*",
     "seller": "AD",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "Monett, MO\u00a0",
     "employees": 6847,
     "kcEmployees": null,
@@ -1151,7 +1112,7 @@
     "companyName": "Take 5 Oil Change",
     "originalName": "Take 5 Oil Change (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Metarie, LA",
     "employees": 1991,
     "kcEmployees": null,
@@ -1164,7 +1125,7 @@
     "companyName": "SCOR Global Life",
     "originalName": "SCOR Global Life (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Paris, France/ Charlotte, NC",
     "employees": 3491,
     "kcEmployees": null,
@@ -1177,7 +1138,7 @@
     "companyName": "Bad Boy Mowers",
     "originalName": "Bad Boy Mowers (MG/Jake YPO)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Batesville, AR\u00a0",
     "employees": 658,
     "kcEmployees": null,
@@ -1190,7 +1151,7 @@
     "companyName": "HUB International",
     "originalName": "HUB International (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, IL",
     "employees": 17000,
     "kcEmployees": null,
@@ -1203,7 +1164,7 @@
     "companyName": "Gallagher",
     "originalName": "Gallagher (AD/SL)*",
     "seller": "AD",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "Rolling Meadows, IL",
     "employees": 52000,
     "kcEmployees": null,
@@ -1216,7 +1177,7 @@
     "companyName": "Acrisure",
     "originalName": "Acrisure (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Grand Rapids, MI",
     "employees": 17000,
     "kcEmployees": null,
@@ -1229,7 +1190,7 @@
     "companyName": "Oracle",
     "originalName": "Oracle (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Austin, TX",
     "employees": 159000,
     "kcEmployees": null,
@@ -1242,7 +1203,7 @@
     "companyName": "Konica Minolta",
     "originalName": "Konica Minolta (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Tokyo, Japan/Wayne, NJ",
     "employees": 39121,
     "kcEmployees": null,
@@ -1255,7 +1216,7 @@
     "companyName": "Dentons",
     "originalName": "Dentons (MG)",
     "seller": "MG",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Washington D.C.",
     "employees": 21000,
     "kcEmployees": null,
@@ -1268,7 +1229,7 @@
     "companyName": "KPMG",
     "originalName": "KPMG (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Amsterdam\\\\New York, NY",
     "employees": 273000,
     "kcEmployees": null,
@@ -1281,7 +1242,7 @@
     "companyName": "OneDigital",
     "originalName": "OneDigital (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Atlanta, GA",
     "employees": 4000,
     "kcEmployees": null,
@@ -1294,7 +1255,7 @@
     "companyName": "Lineage",
     "originalName": "Lineage (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Novi, MI",
     "employees": 26000,
     "kcEmployees": null,
@@ -1307,7 +1268,7 @@
     "companyName": "Farmland Foods",
     "originalName": "Farmland Foods (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 10000,
     "kcEmployees": null,
@@ -1320,7 +1281,7 @@
     "companyName": "AssistRx",
     "originalName": "AssistRx (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Orlando, FL",
     "employees": 1400,
     "kcEmployees": null,
@@ -1333,7 +1294,7 @@
     "companyName": "Barry Wehmiller",
     "originalName": "Barry-Wehmiller (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "St. Louis, MO",
     "employees": 12000,
     "kcEmployees": null,
@@ -1346,7 +1307,7 @@
     "companyName": "Consolidated Communications",
     "originalName": "Consolidated Communications (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Mattoon, IL",
     "employees": 3200,
     "kcEmployees": null,
@@ -1359,7 +1320,7 @@
     "companyName": "Academy Bank",
     "originalName": "Academy Bank (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 497,
     "kcEmployees": null,
@@ -1372,7 +1333,7 @@
     "companyName": "Holmes Murphy",
     "originalName": "Holmes Murphy (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Waukee, IA",
     "employees": 1100,
     "kcEmployees": null,
@@ -1385,7 +1346,7 @@
     "companyName": "Coperion",
     "originalName": "Coperion (formerly Schenck Process) (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 5000,
     "kcEmployees": null,
@@ -1398,7 +1359,7 @@
     "companyName": "KVC Health Systems",
     "originalName": "KVC Health Systems (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Olathe, KS",
     "employees": 2400,
     "kcEmployees": null,
@@ -1411,7 +1372,7 @@
     "companyName": "Healthmarkets",
     "originalName": "Healthmarkets (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "North Richland Hills, TX",
     "employees": 3200,
     "kcEmployees": null,
@@ -1424,7 +1385,7 @@
     "companyName": "El Pollo Loco",
     "originalName": "El Pollo Loco (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Costa Mesa, CA",
     "employees": 4360,
     "kcEmployees": null,
@@ -1437,7 +1398,7 @@
     "companyName": "Emprise Bank",
     "originalName": "Emprise Bank (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Wichita, KS",
     "employees": 444,
     "kcEmployees": null,
@@ -1450,7 +1411,7 @@
     "companyName": "WellSky",
     "originalName": "WellSky (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 1900,
     "kcEmployees": null,
@@ -1463,7 +1424,7 @@
     "companyName": "Intrust Bank",
     "originalName": "Intrust Bank (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Wichita, KS",
     "employees": 773,
     "kcEmployees": null,
@@ -1476,7 +1437,7 @@
     "companyName": "Mylo",
     "originalName": "Mylo (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 177,
     "kcEmployees": null,
@@ -1489,7 +1450,7 @@
     "companyName": "NetSPI",
     "originalName": "NetSPI (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Minneapolis, MN ",
     "employees": 632,
     "kcEmployees": null,
@@ -1502,7 +1463,7 @@
     "companyName": "Owens Corning",
     "originalName": "Owens Corning (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Toledo, OH",
     "employees": 18000,
     "kcEmployees": null,
@@ -1515,7 +1476,7 @@
     "companyName": "Busey Bank",
     "originalName": "Busey Bank (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Champaign, IL",
     "employees": 1500,
     "kcEmployees": null,
@@ -1528,7 +1489,7 @@
     "companyName": "SMG",
     "originalName": "SMG (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 543,
     "kcEmployees": null,
@@ -1541,7 +1502,7 @@
     "companyName": "Mariner Finance",
     "originalName": "Mariner Finance (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Baltimore, MD",
     "employees": 1600,
     "kcEmployees": null,
@@ -1554,7 +1515,7 @@
     "companyName": "Metabo",
     "originalName": "Metabo (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "N\u00fcrtingen, Germany\\\\Braselton, GA",
     "employees": 2000,
     "kcEmployees": null,
@@ -1567,7 +1528,7 @@
     "companyName": "Bradken",
     "originalName": "Bradken (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Mayfield West, Australia\\\\Kansas City, MO",
     "employees": 3000,
     "kcEmployees": null,
@@ -1580,7 +1541,7 @@
     "companyName": "Xyla Health",
     "originalName": "Xyla Health (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "London, UK\\\\Overland Park, KS",
     "employees": 507,
     "kcEmployees": null,
@@ -1593,7 +1554,7 @@
     "companyName": "BOK Financial",
     "originalName": "BOK Financial (AD??) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Tulsa, OK",
     "employees": 4966,
     "kcEmployees": null,
@@ -1606,7 +1567,7 @@
     "companyName": "Mars Petcare",
     "originalName": "Mars Petcare (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Franklin, TN ",
     "employees": 100000,
     "kcEmployees": null,
@@ -1619,7 +1580,7 @@
     "companyName": "State Street",
     "originalName": "State Street (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Boston, MA",
     "employees": 46000,
     "kcEmployees": null,
@@ -1658,7 +1619,7 @@
     "companyName": "Spring Venture Group",
     "originalName": "Spring Venture Group (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 1200,
     "kcEmployees": null,
@@ -1671,7 +1632,7 @@
     "companyName": "Kissick Construction Company",
     "originalName": "Kissick Construction Company (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 400,
     "kcEmployees": null,
@@ -1684,7 +1645,7 @@
     "companyName": "The Andersons Trade Group",
     "originalName": "The Andersons Trade Group (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Maumee, OH",
     "employees": 2259,
     "kcEmployees": null,
@@ -1697,7 +1658,7 @@
     "companyName": "Optiv",
     "originalName": "Optiv (MG) ",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Denver, CO ",
     "employees": 2400,
     "kcEmployees": null,
@@ -1710,7 +1671,7 @@
     "companyName": "HDR inc",
     "originalName": "HDR inc (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Omaha, NE ",
     "employees": 12000,
     "kcEmployees": null,
@@ -1723,7 +1684,7 @@
     "companyName": "Archer Daniels Midland",
     "originalName": "Archer Daniels Midland (ADM) (SL) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, Il",
     "employees": 41,
     "kcEmployees": null,
@@ -1736,7 +1697,7 @@
     "companyName": "CH Robinson",
     "originalName": "C.H. Robinson (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Eden Praire, MN",
     "employees": 15246,
     "kcEmployees": null,
@@ -1749,7 +1710,7 @@
     "companyName": "Sentry Management",
     "originalName": "Sentry Management (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Longwood, FL ",
     "employees": 1000,
     "kcEmployees": null,
@@ -1762,7 +1723,7 @@
     "companyName": "Black & McDonald",
     "originalName": "Black & McDonald (AD) ",
     "seller": "AD",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Kansas City, MO",
     "employees": 5000,
     "kcEmployees": null,
@@ -1775,7 +1736,7 @@
     "companyName": "Kohler",
     "originalName": "Kohler (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kohler, WI",
     "employees": 40000,
     "kcEmployees": null,
@@ -1788,7 +1749,7 @@
     "companyName": "Hillenbrand",
     "originalName": "Hillenbrand (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Batesville, IN",
     "employees": 10400,
     "kcEmployees": null,
@@ -1801,7 +1762,7 @@
     "companyName": "Central Power Systems Services",
     "originalName": "Central Power Systems & Services (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Liberty, MO ",
     "employees": 500,
     "kcEmployees": null,
@@ -1814,7 +1775,7 @@
     "companyName": "Catalent Pharma Solutions",
     "originalName": "Catalent Pharma Solutions (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Somerset, NJ",
     "employees": 18000,
     "kcEmployees": null,
@@ -1827,7 +1788,7 @@
     "companyName": "Edged",
     "originalName": "Edged (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "New York, New York ",
     "employees": 91,
     "kcEmployees": null,
@@ -1840,7 +1801,7 @@
     "companyName": "FreedomPay",
     "originalName": "FreedomPay (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Philadelphia, PA",
     "employees": 600,
     "kcEmployees": null,
@@ -1853,7 +1814,7 @@
     "companyName": "IPFS",
     "originalName": "IPFS (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 600,
     "kcEmployees": null,
@@ -1866,7 +1827,7 @@
     "companyName": "Coinflip",
     "originalName": "Coinflip (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, Il",
     "employees": 200,
     "kcEmployees": null,
@@ -1879,7 +1840,7 @@
     "companyName": "Diamonte Blockchain",
     "originalName": "Diamonte Blockchain (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lenexa, KS",
     "employees": 36,
     "kcEmployees": null,
@@ -1892,7 +1853,7 @@
     "companyName": "Essence of Australia",
     "originalName": "Essence of Australia (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lenexa, KS",
     "employees": 400,
     "kcEmployees": null,
@@ -1905,7 +1866,7 @@
     "companyName": "Abbottt",
     "originalName": "Abbottt (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, Il",
     "employees": 114000,
     "kcEmployees": null,
@@ -1918,7 +1879,7 @@
     "companyName": "Inland Truck Parts & Service",
     "originalName": "Inland Truck Parts & Service (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 248,
     "kcEmployees": null,
@@ -1931,7 +1892,7 @@
     "companyName": "Archer Integrated Risk Management",
     "originalName": "Archer Integrated Risk Management (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 750,
     "kcEmployees": null,
@@ -1944,7 +1905,7 @@
     "companyName": "Examinetics",
     "originalName": "Examinetics (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 300,
     "kcEmployees": null,
@@ -1957,7 +1918,7 @@
     "companyName": "PayIt",
     "originalName": "PayIt (AD) ",
     "seller": "AD",
-    "status": "In Progress",
+    "status": "Intro Discussion",
     "hq": "Kansas City, MO",
     "employees": 229,
     "kcEmployees": null,
@@ -1970,7 +1931,7 @@
     "companyName": "AMC Entertainment",
     "originalName": "AMC Entertainment (MG) ",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Leawood, KS",
     "employees": 33812,
     "kcEmployees": null,
@@ -1983,7 +1944,7 @@
     "companyName": "T Mobile",
     "originalName": "T-Mobile Pending Discussions with SKC ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -2022,7 +1983,7 @@
     "companyName": "Black & Veatch",
     "originalName": "Black & Veatch* (SKC PM)",
     "seller": "Unassigned",
-    "status": "Active",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 12000,
     "kcEmployees": null,
@@ -2035,7 +1996,7 @@
     "companyName": "Morton Salt Inc",
     "originalName": "Morton Salt. Inc SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, Il",
     "employees": 1000,
     "kcEmployees": null,
@@ -2048,7 +2009,7 @@
     "companyName": "Armstrong World Industries",
     "originalName": "Armstrong World Industries SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lancaster, PA ",
     "employees": 3500,
     "kcEmployees": null,
@@ -2061,7 +2022,7 @@
     "companyName": "Duluth Trading",
     "originalName": "Duluth Trading SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Mount Horeb, WI ",
     "employees": 1281,
     "kcEmployees": null,
@@ -2074,7 +2035,7 @@
     "companyName": "Nebius",
     "originalName": "Nebius AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Amsterdam, Netherlands \\\\ San Francisco, CA",
     "employees": 1300,
     "kcEmployees": null,
@@ -2087,7 +2048,7 @@
     "companyName": "Education Dynamics",
     "originalName": "Education Dynamics HOLD FOR FUTURE",
     "seller": "Unassigned",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Lenexa, KS",
     "employees": 280,
     "kcEmployees": null,
@@ -2100,7 +2061,7 @@
     "companyName": "Animal Health International",
     "originalName": "Animal Health International SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Loveland, CO ",
     "employees": 320,
     "kcEmployees": null,
@@ -2113,7 +2074,7 @@
     "companyName": "Scooters Coffee",
     "originalName": "Scooters Coffee AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Bellevue, NE",
     "employees": 3200,
     "kcEmployees": null,
@@ -2126,7 +2087,7 @@
     "companyName": "ACE Hardware",
     "originalName": "ACE Hardware AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Oak Brook, Il",
     "employees": 12500,
     "kcEmployees": null,
@@ -2139,7 +2100,7 @@
     "companyName": "Farmers Insurance",
     "originalName": "Farmers Insurance AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Los Angeles, CA",
     "employees": 21000,
     "kcEmployees": null,
@@ -2152,7 +2113,7 @@
     "companyName": "MCH",
     "originalName": "MCH HOLD FOR FUTURE ",
     "seller": "Unassigned",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Basel, Switzerland \\\\ Sweet Springs, MO",
     "employees": 1000,
     "kcEmployees": null,
@@ -2165,7 +2126,7 @@
     "companyName": "Fairbanks Scales Inc",
     "originalName": "Fairbanks Scales Inc SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 700,
     "kcEmployees": null,
@@ -2178,7 +2139,7 @@
     "companyName": "JB Hunt Transport",
     "originalName": "J.B. Hunt Transport MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lowell, AR",
     "employees": 20961,
     "kcEmployees": null,
@@ -2191,7 +2152,7 @@
     "companyName": "RX Savings Solutions",
     "originalName": "RX Savings Solutions SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 287,
     "kcEmployees": null,
@@ -2204,7 +2165,7 @@
     "companyName": "RTS Financial Service",
     "originalName": "RTS Financial Service SL(We did not have Shamrock on a wave yet---so it's good)",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lenexa, KS",
     "employees": 785,
     "kcEmployees": null,
@@ -2217,7 +2178,7 @@
     "companyName": "LeaderOne Financial",
     "originalName": "LeaderOne Financial AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 646,
     "kcEmployees": null,
@@ -2230,7 +2191,7 @@
     "companyName": "Weber Inc",
     "originalName": "Weber Inc SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Palatine, Il",
     "employees": 2564,
     "kcEmployees": null,
@@ -2243,7 +2204,7 @@
     "companyName": "Imperial PFS",
     "originalName": "Imperial PFS AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 504,
     "kcEmployees": null,
@@ -2256,7 +2217,7 @@
     "companyName": "Werner Enterprises",
     "originalName": "Werner Enterprises SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Omaha, NE",
     "employees": 6265,
     "kcEmployees": null,
@@ -2269,7 +2230,7 @@
     "companyName": "Grinnell Mutual",
     "originalName": "Grinnell Mutual SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Grinnell, IA",
     "employees": 756,
     "kcEmployees": null,
@@ -2282,7 +2243,7 @@
     "companyName": "Integris",
     "originalName": "Integris HOLD",
     "seller": "Unassigned",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Oklahoma City, OK",
     "employees": 5529,
     "kcEmployees": null,
@@ -2295,7 +2256,7 @@
     "companyName": "Nelnet",
     "originalName": "Nelnet SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lincoln, NE",
     "employees": 3112,
     "kcEmployees": null,
@@ -2308,7 +2269,7 @@
     "companyName": "MiTek",
     "originalName": "MiTek AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chesterfield, MO",
     "employees": 2783,
     "kcEmployees": null,
@@ -2321,7 +2282,7 @@
     "companyName": "Faith Technologies Inc",
     "originalName": "Faith Technologies Inc SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Menasha, WI ",
     "employees": 1800,
     "kcEmployees": null,
@@ -2334,7 +2295,7 @@
     "companyName": "Chewy Inc",
     "originalName": "Chewy Inc SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Boston, MA",
     "employees": 18100,
     "kcEmployees": null,
@@ -2347,7 +2308,7 @@
     "companyName": "IQVIA Holdings Inc",
     "originalName": "IQVIA Holdings Inc SL",
     "seller": "SL",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Durham, NC",
     "employees": 87000,
     "kcEmployees": null,
@@ -2360,7 +2321,7 @@
     "companyName": "ScriptPro",
     "originalName": "ScriptPro AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Mission, KS ",
     "employees": 663,
     "kcEmployees": null,
@@ -2373,7 +2334,7 @@
     "companyName": "Mattel",
     "originalName": "Mattel AD/MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "El Segundo, CA",
     "employees": 33000,
     "kcEmployees": null,
@@ -2386,7 +2347,7 @@
     "companyName": "Bartlett &  Co.",
     "originalName": "Bartlett & Co. AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 692,
     "kcEmployees": null,
@@ -2399,7 +2360,7 @@
     "companyName": "Paycor",
     "originalName": "Paycor SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Cincinnait, OH",
     "employees": 2900,
     "kcEmployees": null,
@@ -2412,7 +2373,7 @@
     "companyName": "Ryan",
     "originalName": "Ryan (Tax Services) AD/MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dallas, TX",
     "employees": 5900,
     "kcEmployees": null,
@@ -2425,7 +2386,7 @@
     "companyName": "TVH",
     "originalName": "TVH SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Belgium//Olathe, KS",
     "employees": 5000,
     "kcEmployees": null,
@@ -2438,7 +2399,7 @@
     "companyName": "ReDiscover",
     "originalName": "ReDiscover AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lee's Summit, MO ",
     "employees": 640,
     "kcEmployees": null,
@@ -2451,7 +2412,7 @@
     "companyName": "Rubrik Inc",
     "originalName": "Rubrik, Inc. SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Palo Alto, CA",
     "employees": 3100,
     "kcEmployees": null,
@@ -2464,7 +2425,7 @@
     "companyName": "Broadridge Financial Solutions",
     "originalName": "Broadridge Financial Solutions SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lake Success, NY",
     "employees": 14700,
     "kcEmployees": null,
@@ -2477,7 +2438,7 @@
     "companyName": "Cardinal Health",
     "originalName": "Cardinal Health SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dublin, OH ",
     "employees": 48000,
     "kcEmployees": null,
@@ -2490,7 +2451,7 @@
     "companyName": "Corbion",
     "originalName": "Corbion AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Amsterdam, Netherlands//Lenexa, KS",
     "employees": 2727,
     "kcEmployees": null,
@@ -2503,7 +2464,7 @@
     "companyName": "Loves Truck Shop",
     "originalName": "Loves Truck Shop SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Oklahoma City, OK ",
     "employees": 40000,
     "kcEmployees": null,
@@ -2516,7 +2477,7 @@
     "companyName": "Boot Barn",
     "originalName": "Boot Barn SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Irvine, CA",
     "employees": 11300,
     "kcEmployees": null,
@@ -2529,7 +2490,7 @@
     "companyName": "Agiliti",
     "originalName": "Agiliti AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Minneapolis, MN",
     "employees": 5500,
     "kcEmployees": null,
@@ -2542,7 +2503,7 @@
     "companyName": "Ascend Learning LLC",
     "originalName": "Ascend Learning LLC SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Burlington, MA ",
     "employees": 4926,
     "kcEmployees": null,
@@ -2555,7 +2516,7 @@
     "companyName": "EML Payments",
     "originalName": "EML Payments AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Australia//Kansas City",
     "employees": 458,
     "kcEmployees": null,
@@ -2568,7 +2529,7 @@
     "companyName": "OTSI",
     "originalName": "OTSI SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 1100,
     "kcEmployees": null,
@@ -2581,7 +2542,7 @@
     "companyName": "Lula",
     "originalName": "Lula (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 80,
     "kcEmployees": null,
@@ -2594,7 +2555,7 @@
     "companyName": "ONEOK",
     "originalName": "ONEOK (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Tulsa, OK",
     "employees": null,
     "kcEmployees": null,
@@ -2607,7 +2568,7 @@
     "companyName": "EMC Insurance Corporation",
     "originalName": "EMC Insurance Corporation (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Des Moines, IA",
     "employees": null,
     "kcEmployees": null,
@@ -2620,7 +2581,7 @@
     "companyName": "Melaleuca",
     "originalName": "Melaleuca (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Idaho Falls, ID ",
     "employees": null,
     "kcEmployees": null,
@@ -2633,7 +2594,7 @@
     "companyName": "Jiffy Lube",
     "originalName": "Jiffy Lube (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Houston, TX",
     "employees": null,
     "kcEmployees": null,
@@ -2646,7 +2607,7 @@
     "companyName": "ReeceNichols",
     "originalName": "ReeceNichols (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Leawood, KS ",
     "employees": null,
     "kcEmployees": null,
@@ -2659,7 +2620,7 @@
     "companyName": "EXL Insurance",
     "originalName": "EXL Insurance (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "NYC",
     "employees": null,
     "kcEmployees": null,
@@ -2672,7 +2633,7 @@
     "companyName": "Jack Henry Associates",
     "originalName": "Jack Henry Associates (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Monett, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -2685,7 +2646,7 @@
     "companyName": "Ororo",
     "originalName": "Ororo (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Las Vegas, NV",
     "employees": null,
     "kcEmployees": null,
@@ -2698,7 +2659,7 @@
     "companyName": "Brown and Brown",
     "originalName": "Brown and Brown (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Daytona Beach, FL ",
     "employees": null,
     "kcEmployees": null,
@@ -2711,7 +2672,7 @@
     "companyName": "Roku",
     "originalName": "Roku (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "San Jose, CA",
     "employees": 3340,
     "kcEmployees": null,
@@ -2724,7 +2685,7 @@
     "companyName": "Risk Strategies",
     "originalName": "Risk Strategies (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Boston, MA",
     "employees": 5000,
     "kcEmployees": null,
@@ -2737,7 +2698,7 @@
     "companyName": "AAON Inc",
     "originalName": "AAON Inc. (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Tulsa, OK",
     "employees": 3856,
     "kcEmployees": null,
@@ -2750,7 +2711,7 @@
     "companyName": "Echo Global Logistics",
     "originalName": "Echo Global Logistics (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, Il",
     "employees": 2800,
     "kcEmployees": null,
@@ -2763,7 +2724,7 @@
     "companyName": "UFG Insurance",
     "originalName": "UFG Insurance (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Cedar Rapids, IA",
     "employees": 1100,
     "kcEmployees": null,
@@ -2776,7 +2737,7 @@
     "companyName": "Windstream",
     "originalName": "Windstream (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Little Rock, AK",
     "employees": 11080,
     "kcEmployees": null,
@@ -2789,7 +2750,7 @@
     "companyName": "Express Employment International",
     "originalName": "Express Employment International (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Oklahoma City, OK ",
     "employees": 14000,
     "kcEmployees": null,
@@ -2802,7 +2763,7 @@
     "companyName": "Paycom",
     "originalName": "Paycom (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Oklahoma City, OK ",
     "employees": 7300,
     "kcEmployees": null,
@@ -2815,7 +2776,7 @@
     "companyName": "Olsson",
     "originalName": "Olsson (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lincoln, NE",
     "employees": 1500,
     "kcEmployees": null,
@@ -2828,7 +2789,7 @@
     "companyName": "ICON plc",
     "originalName": "ICON plc (SKC hold)",
     "seller": "Unassigned",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Dublin, Ireland",
     "employees": 41100,
     "kcEmployees": null,
@@ -2841,7 +2802,7 @@
     "companyName": "Layne A Granite Company",
     "originalName": "Layne, A Granite Company SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, KS",
     "employees": 234,
     "kcEmployees": null,
@@ -2854,7 +2815,7 @@
     "companyName": "Ryan Transportation",
     "originalName": "Ryan Transportation AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 600,
     "kcEmployees": null,
@@ -2867,7 +2828,7 @@
     "companyName": "Synchrony Financial",
     "originalName": "Synchrony Financial MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Stamford, CT ",
     "employees": 18000,
     "kcEmployees": null,
@@ -2880,7 +2841,7 @@
     "companyName": "Zillow Home Loans",
     "originalName": "Zillow Home Loans (Zillow Group) SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Irvine, CA",
     "employees": 404,
     "kcEmployees": null,
@@ -2893,7 +2854,7 @@
     "companyName": "Niagara Bottling",
     "originalName": "Niagara Bottling AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Diamond Bar, CA",
     "employees": 10000,
     "kcEmployees": null,
@@ -2906,7 +2867,7 @@
     "companyName": "FairWave Coffee",
     "originalName": "FairWave Coffee SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 402,
     "kcEmployees": null,
@@ -2919,7 +2880,7 @@
     "companyName": "Walmart",
     "originalName": "Walmart MG/AD/SL",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Bentonville, AR",
     "employees": 2100000,
     "kcEmployees": null,
@@ -2932,7 +2893,7 @@
     "companyName": "Jiangsu Cnano Technologies",
     "originalName": "Jiangsu Cnano Technologies SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Zhenjiang, China//New Century, KS ",
     "employees": 735,
     "kcEmployees": null,
@@ -2945,7 +2906,7 @@
     "companyName": "Enterprise Bank",
     "originalName": "Enterprise Bank AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Clayton, MO ",
     "employees": 576,
     "kcEmployees": null,
@@ -2958,7 +2919,7 @@
     "companyName": "STIHL",
     "originalName": "STIHL SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Waiblingen, Germany//Virginia Beach, VA",
     "employees": 20000,
     "kcEmployees": null,
@@ -2971,7 +2932,7 @@
     "companyName": "Circle K",
     "originalName": "Circle K SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Tempe, AZ",
     "employees": 124000,
     "kcEmployees": null,
@@ -2984,7 +2945,7 @@
     "companyName": "Cyderes",
     "originalName": "Cyderes SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 1000,
     "kcEmployees": 0,
@@ -2997,7 +2958,7 @@
     "companyName": "Depth Security",
     "originalName": "Depth Security (Kinoca Minolta) AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 39121,
     "kcEmployees": 144,
@@ -3010,7 +2971,7 @@
     "companyName": "Rally House",
     "originalName": "Rally House SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lenexa, KS ",
     "employees": 1700,
     "kcEmployees": null,
@@ -3023,7 +2984,7 @@
     "companyName": "LendNation",
     "originalName": "LendNation (QC Holdings) AD",
     "seller": "AD",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Lenexa, KS ",
     "employees": 1000,
     "kcEmployees": 393,
@@ -3036,7 +2997,7 @@
     "companyName": "Tyson Foods",
     "originalName": "Tyson Foods AD/SL",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Springdale, AR ",
     "employees": 120000,
     "kcEmployees": 65,
@@ -3049,7 +3010,7 @@
     "companyName": "World Wide Technology",
     "originalName": "World Wide Technology AD/SL ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Maryland Heights, MO ",
     "employees": 12000,
     "kcEmployees": 133,
@@ -3062,7 +3023,7 @@
     "companyName": "VeChain",
     "originalName": "VeChain AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "San Marino ",
     "employees": 20000000,
     "kcEmployees": 64,
@@ -3075,7 +3036,7 @@
     "companyName": "Masters Transportation",
     "originalName": "Masters Transportation SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 75000000,
     "kcEmployees": 171,
@@ -3088,7 +3049,7 @@
     "companyName": "HoneyWell",
     "originalName": "HoneyWell (revisit) AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": 54,
@@ -3101,7 +3062,7 @@
     "companyName": "Stinson LLP",
     "originalName": "Stinson LLP  AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 186,
@@ -3114,7 +3075,7 @@
     "companyName": "BlueScope Steel",
     "originalName": "BlueScope Steel SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Melbourne, Australia//Kansas City, MO ",
     "employees": null,
     "kcEmployees": 142,
@@ -3127,7 +3088,7 @@
     "companyName": "AutoAlert",
     "originalName": "AutoAlert AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 110,
@@ -3140,7 +3101,7 @@
     "companyName": "Indra Air Traffic",
     "originalName": "Indra Air Traffic SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": null,
     "kcEmployees": 71,
@@ -3153,7 +3114,7 @@
     "companyName": "Nazdar",
     "originalName": "Nazdar AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Shawnee, KS",
     "employees": null,
     "kcEmployees": 242,
@@ -3166,7 +3127,7 @@
     "companyName": "Pivot International",
     "originalName": "Pivot International AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lenexa, KS",
     "employees": null,
     "kcEmployees": 300,
@@ -3179,7 +3140,7 @@
     "companyName": "Smart Warehousing",
     "originalName": "Smart Warehousing SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -3192,7 +3153,7 @@
     "companyName": "Tnemec",
     "originalName": "Tnemec AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -3205,7 +3166,7 @@
     "companyName": "Unite Private Networks",
     "originalName": "Unite Private Networks (segra) SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -3218,7 +3179,7 @@
     "companyName": "TransAmerica",
     "originalName": "TransAmerica SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Cedar Rapids, IA",
     "employees": null,
     "kcEmployees": null,
@@ -3231,7 +3192,7 @@
     "companyName": "US Engineering",
     "originalName": "U.S. Engineering AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 163,
@@ -3244,7 +3205,7 @@
     "companyName": "Orange EV",
     "originalName": "Orange EV SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, KS\u00a0",
     "employees": null,
     "kcEmployees": 102,
@@ -3257,7 +3218,7 @@
     "companyName": "Associated Bank Corp",
     "originalName": "Associated Bank Corp MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Green Bay, WI ",
     "employees": null,
     "kcEmployees": 83,
@@ -3270,7 +3231,7 @@
     "companyName": "Maverik",
     "originalName": "Maverik MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Salt Lake City, UT ",
     "employees": null,
     "kcEmployees": 18,
@@ -3283,7 +3244,7 @@
     "companyName": "Healthcare IT Leaders",
     "originalName": "Healthcare IT Leaders: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Alpharetta, GA ",
     "employees": null,
     "kcEmployees": null,
@@ -3296,7 +3257,7 @@
     "companyName": "Radiant Logistics",
     "originalName": "Radiant Logistics: AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Bellevue, WA",
     "employees": null,
     "kcEmployees": null,
@@ -3309,7 +3270,7 @@
     "companyName": "PBI Gordon",
     "originalName": "PBI Gordon: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Shawnee, KS ",
     "employees": null,
     "kcEmployees": 87,
@@ -3322,7 +3283,7 @@
     "companyName": "First National Bank of Omaha",
     "originalName": "First National Bank of Omaha (FNBO): AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Omaha, NE",
     "employees": null,
     "kcEmployees": null,
@@ -3335,7 +3296,7 @@
     "companyName": "AssuredPartners",
     "originalName": "AssuredPartners: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Louisville, KY",
     "employees": null,
     "kcEmployees": null,
@@ -3348,7 +3309,7 @@
     "companyName": "DSM Firmenich",
     "originalName": "DSM Firmenich: AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Netherlands//Exton, PA",
     "employees": null,
     "kcEmployees": null,
@@ -3361,7 +3322,7 @@
     "companyName": "Norbrook",
     "originalName": "Norbrook: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Northern Ireland//Lenexa, KS ",
     "employees": null,
     "kcEmployees": null,
@@ -3374,7 +3335,7 @@
     "companyName": "Sierra",
     "originalName": "Sierra: AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Framingham, MA ",
     "employees": null,
     "kcEmployees": null,
@@ -3387,7 +3348,7 @@
     "companyName": "Rush FunPlex",
     "originalName": "Rush FunPlex: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Syracuse,  UT",
     "employees": null,
     "kcEmployees": 41,
@@ -3400,7 +3361,7 @@
     "companyName": "IBC Country",
     "originalName": "IBC Country: AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas  City, MO ",
     "employees": null,
     "kcEmployees": 223,
@@ -3413,7 +3374,7 @@
     "companyName": "Markel",
     "originalName": "Markel: RM/MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Glen Allen, VA ",
     "employees": null,
     "kcEmployees": 470,
@@ -3426,7 +3387,7 @@
     "companyName": "Nomura",
     "originalName": "Nomura SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": 159,
@@ -3439,7 +3400,7 @@
     "companyName": "Merck Animal Health",
     "originalName": "Merck Animal Health AD ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -3452,7 +3413,7 @@
     "companyName": "Andersen Corporation",
     "originalName": "Andersen Corporation SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Bayport, MN",
     "employees": null,
     "kcEmployees": 75,
@@ -3465,7 +3426,7 @@
     "companyName": "Eastern Airlines",
     "originalName": "Eastern Airlines MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 43,
@@ -3478,7 +3439,7 @@
     "companyName": "Elanco",
     "originalName": "Elanco AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Indianapolis, MN",
     "employees": null,
     "kcEmployees": null,
@@ -3491,7 +3452,7 @@
     "companyName": "Husch Blackwell",
     "originalName": "Husch Blackwell SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas  City, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -3504,7 +3465,7 @@
     "companyName": "Lathrop GPM",
     "originalName": "Lathrop GPM AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -3517,7 +3478,7 @@
     "companyName": "Marshalltown Tools",
     "originalName": "Marshalltown Tools SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Marshalltown, IA ",
     "employees": null,
     "kcEmployees": null,
@@ -3530,7 +3491,7 @@
     "companyName": "Multivac Group",
     "originalName": "Multivac Group SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Germany//Kansas City",
     "employees": null,
     "kcEmployees": null,
@@ -3543,7 +3504,7 @@
     "companyName": "Procore Technologies",
     "originalName": "Procore Technologies (Cerris) AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Carpinteria, CA ",
     "employees": null,
     "kcEmployees": null,
@@ -3556,7 +3517,7 @@
     "companyName": "RB SRL",
     "originalName": "RB SRL AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -3569,7 +3530,7 @@
     "companyName": "TAB",
     "originalName": "TAB SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Me\u017eica, Slovenia//Liberty, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -3582,7 +3543,7 @@
     "companyName": "Textron",
     "originalName": "Textron (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Providence, RI ",
     "employees": null,
     "kcEmployees": null,
@@ -3595,7 +3556,7 @@
     "companyName": "Security Bank of KC",
     "originalName": "Security Bank of KC (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Makati City, Philippines//Bemidji, MN",
     "employees": null,
     "kcEmployees": null,
@@ -3608,7 +3569,7 @@
     "companyName": "Bartlett",
     "originalName": "Bartlett (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -3621,7 +3582,7 @@
     "companyName": "Sunflower Bank",
     "originalName": "Sunflower Bank AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dallas, TX ",
     "employees": null,
     "kcEmployees": null,
@@ -3634,7 +3595,7 @@
     "companyName": "LucasOil",
     "originalName": "LucasOil (MG) ",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Indianapolis, IN ",
     "employees": null,
     "kcEmployees": null,
@@ -3647,7 +3608,7 @@
     "companyName": "NBH Bank",
     "originalName": "NBH Bank (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Denver, CO",
     "employees": null,
     "kcEmployees": null,
@@ -3660,7 +3621,7 @@
     "companyName": "PPG",
     "originalName": "PPG (VersaFlex) (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, KS",
     "employees": null,
     "kcEmployees": null,
@@ -3673,7 +3634,7 @@
     "companyName": "Dechra",
     "originalName": "Dechra (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Northwich, UK//Leawood, KS ",
     "employees": null,
     "kcEmployees": null,
@@ -3686,7 +3647,7 @@
     "companyName": "CST industries",
     "originalName": "CST industries (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -3699,7 +3660,7 @@
     "companyName": "Spencer Fane",
     "originalName": "Spencer Fane (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park",
     "employees": null,
     "kcEmployees": null,
@@ -3712,7 +3673,7 @@
     "companyName": "C&C Group",
     "originalName": "C&C Group (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dublin, Ireland//Lenexa, KS",
     "employees": null,
     "kcEmployees": null,
@@ -3725,7 +3686,7 @@
     "companyName": "Ply Gem",
     "originalName": "Ply Gem (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Cary, NC",
     "employees": null,
     "kcEmployees": null,
@@ -3738,7 +3699,7 @@
     "companyName": "ICL Group",
     "originalName": "ICL Group (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Tel Aviv, Isarel//St. Louis, MO ",
     "employees": null,
     "kcEmployees": 650,
@@ -3751,7 +3712,7 @@
     "companyName": "Parker Hannifin",
     "originalName": "Parker Hannifin (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Mayfield Heights, OH",
     "employees": null,
     "kcEmployees": 3500,
@@ -3764,7 +3725,7 @@
     "companyName": "Fairway Independent Mortgage",
     "originalName": "Fairway Independent Mortgage (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Madison, WI ",
     "employees": null,
     "kcEmployees": 2500,
@@ -3777,7 +3738,7 @@
     "companyName": "United Wholesale Mortgage",
     "originalName": "United Wholesale Mortgage (MG)",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Pontiac, MI ",
     "employees": null,
     "kcEmployees": 8000,
@@ -3790,7 +3751,7 @@
     "companyName": "Flat Branch Mortgage",
     "originalName": "Flat Branch Mortgage (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Columbia, MO ",
     "employees": null,
     "kcEmployees": 140000,
@@ -3803,7 +3764,7 @@
     "companyName": "Plainscapital",
     "originalName": "Plainscapital (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dallas, TX ",
     "employees": null,
     "kcEmployees": 100000,
@@ -3816,7 +3777,7 @@
     "companyName": "Wagner Logistics",
     "originalName": "Wagner Logistics (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 4272,
@@ -3829,7 +3790,7 @@
     "companyName": "Border States Electric",
     "originalName": "Border States Electric (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Fargo, ND",
     "employees": null,
     "kcEmployees": 14200,
@@ -3842,7 +3803,7 @@
     "companyName": "Stryten Energy",
     "originalName": "Stryten Energy (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Alpharetta, GA ",
     "employees": null,
     "kcEmployees": 100000,
@@ -3855,7 +3816,7 @@
     "companyName": "Progress Rail Services Corp",
     "originalName": "Progress Rail Services Corp. (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Albertville, AL",
     "employees": null,
     "kcEmployees": 1280,
@@ -3868,7 +3829,7 @@
     "companyName": "CBRE",
     "originalName": "CBRE (AD) ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dallas, TX ",
     "employees": null,
     "kcEmployees": 1500,
@@ -3881,7 +3842,7 @@
     "companyName": "Tim Hortons",
     "originalName": "Tim Hortons (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Toronto, CA",
     "employees": null,
     "kcEmployees": 800,
@@ -3894,7 +3855,7 @@
     "companyName": "Heartland Payment System",
     "originalName": "Heartland Payment System: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Oklahoma City, OK ",
     "employees": null,
     "kcEmployees": 8000,
@@ -3907,7 +3868,7 @@
     "companyName": "Rocket Mortgage",
     "originalName": "Rocket Mortgage: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Detroit, MI ",
     "employees": null,
     "kcEmployees": 6200,
@@ -3920,7 +3881,7 @@
     "companyName": "Sams Club",
     "originalName": "Sam\u2019s Club: AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Bentonville, AK ",
     "employees": null,
     "kcEmployees": 3926,
@@ -3933,7 +3894,7 @@
     "companyName": "Lindsay Corporation",
     "originalName": "Lindsay Corporation SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Omaha, NE ",
     "employees": null,
     "kcEmployees": 3500,
@@ -3946,7 +3907,7 @@
     "companyName": "Flexsteel Industries",
     "originalName": "Flexsteel Industries SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dubuque, IA",
     "employees": null,
     "kcEmployees": 2600,
@@ -3959,7 +3920,7 @@
     "companyName": "Van Meter",
     "originalName": "Van Meter AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Cedar Rapids, IA",
     "employees": null,
     "kcEmployees": 4000,
@@ -3972,7 +3933,7 @@
     "companyName": "Buckle",
     "originalName": "Buckle SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kearney, NE",
     "employees": null,
     "kcEmployees": 700,
@@ -3985,7 +3946,7 @@
     "companyName": "Crete Carrier",
     "originalName": "Crete Carrier AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lincoln, NE",
     "employees": null,
     "kcEmployees": 1200,
@@ -3998,7 +3959,7 @@
     "companyName": "Ameritas",
     "originalName": "Ameritas SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lincoln, NE",
     "employees": null,
     "kcEmployees": 2600,
@@ -4011,7 +3972,7 @@
     "companyName": "Vermeer",
     "originalName": "Vermeer SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Penne, IA",
     "employees": null,
     "kcEmployees": 28800,
@@ -4024,7 +3985,7 @@
     "companyName": "Per Mar Security Services",
     "originalName": "Per Mar Security Services AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "ul",
     "employees": null,
     "kcEmployees": 1000,
@@ -4037,7 +3998,7 @@
     "companyName": "Brightspeed",
     "originalName": "\u00a0Brightspeed: AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Charlotte, NC",
     "employees": null,
     "kcEmployees": null,
@@ -4050,7 +4011,7 @@
     "companyName": "Spectrum Paint",
     "originalName": "Spectrum Paint AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Tulsa, OK ",
     "employees": null,
     "kcEmployees": 237,
@@ -4063,7 +4024,7 @@
     "companyName": "Sapp Bros",
     "originalName": "Sapp Bros SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Omaha, NE ",
     "employees": null,
     "kcEmployees": 10000,
@@ -4076,7 +4037,7 @@
     "companyName": "Albaugh LLC",
     "originalName": "Albaugh, LLC. AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Ankneny, IA",
     "employees": null,
     "kcEmployees": 2800,
@@ -4089,7 +4050,7 @@
     "companyName": "Dillards",
     "originalName": "Dillards HOLD",
     "seller": "Unassigned",
-    "status": "Hold",
+    "status": "HOLD",
     "hq": "Little Rock, AK ",
     "employees": null,
     "kcEmployees": 63000,
@@ -4102,7 +4063,7 @@
     "companyName": "Alert 360",
     "originalName": "Alert 360 SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Tulsa, OK ",
     "employees": null,
     "kcEmployees": 1800,
@@ -4115,7 +4076,7 @@
     "companyName": "US Foods",
     "originalName": "US Foods MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Rosemont, IL ",
     "employees": null,
     "kcEmployees": 7600,
@@ -4128,7 +4089,7 @@
     "companyName": "Scarbrough Global",
     "originalName": "Scarbrough Global SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 766,
@@ -4141,7 +4102,7 @@
     "companyName": "Cardinal Glass Industries",
     "originalName": "Cardinal Glass Industries SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Eden Prairie, MN",
     "employees": null,
     "kcEmployees": 700,
@@ -4154,7 +4115,7 @@
     "companyName": "Echo Global Logistics",
     "originalName": "Echo Global Logistics AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, IL ",
     "employees": null,
     "kcEmployees": 100,
@@ -4167,7 +4128,7 @@
     "companyName": "Eurofins",
     "originalName": "Eurofins AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Luxembourg//Lancaster, PA ",
     "employees": null,
     "kcEmployees": 1800,
@@ -4180,7 +4141,7 @@
     "companyName": "Mercalis",
     "originalName": "Mercalis SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Morrisvile, NC",
     "employees": null,
     "kcEmployees": 1500,
@@ -4193,7 +4154,7 @@
     "companyName": "Winsupply",
     "originalName": "Winsupply SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dayton, OH ",
     "employees": null,
     "kcEmployees": 7910,
@@ -4206,7 +4167,7 @@
     "companyName": "Americo Life",
     "originalName": "Americo Life SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 1400,
@@ -4219,7 +4180,7 @@
     "companyName": "WorkCare",
     "originalName": "WorkCare SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Anaheim, CA ",
     "employees": null,
     "kcEmployees": 182000,
@@ -4232,7 +4193,7 @@
     "companyName": "Nortian Foodtech",
     "originalName": "Nortian Foodtech SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 10000,
@@ -4245,7 +4206,7 @@
     "companyName": "CRB",
     "originalName": "CRB SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Atlanta, GA",
     "employees": null,
     "kcEmployees": 3103,
@@ -4258,7 +4219,7 @@
     "companyName": "Shook Hardy & Bacon",
     "originalName": "Shook, Hardy & Bacon SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -4271,7 +4232,7 @@
     "companyName": "Crocs",
     "originalName": "Crocs/HeyDude SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Broomfield, CO ",
     "employees": null,
     "kcEmployees": 725,
@@ -4284,7 +4245,7 @@
     "companyName": "The Armstrong Company",
     "originalName": "The Armstrong Company GM",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Memphis, TN",
     "employees": null,
     "kcEmployees": 744,
@@ -4297,7 +4258,7 @@
     "companyName": "Comcast",
     "originalName": "Comcast AD ",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Philadelphia, PA ",
     "employees": null,
     "kcEmployees": null,
@@ -4310,7 +4271,7 @@
     "companyName": "Americold",
     "originalName": "Americold SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Sandy Springs, GA",
     "employees": null,
     "kcEmployees": 300,
@@ -4323,7 +4284,7 @@
     "companyName": "ACI Worldwide",
     "originalName": "ACI Worldwide SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Omaha, NE ",
     "employees": null,
     "kcEmployees": 201,
@@ -4336,7 +4297,7 @@
     "companyName": "Steadily",
     "originalName": "Steadily SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS ",
     "employees": null,
     "kcEmployees": 1900,
@@ -4349,7 +4310,7 @@
     "companyName": "Blue Owl",
     "originalName": "Blue Owl MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "NYC",
     "employees": null,
     "kcEmployees": 1600,
@@ -4362,7 +4323,7 @@
     "companyName": "Conexon",
     "originalName": "Conexon ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 1916,
@@ -4375,7 +4336,7 @@
     "companyName": "Artera",
     "originalName": "Artera ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Santa Barbara, CA ",
     "employees": null,
     "kcEmployees": 1000,
@@ -4388,7 +4349,7 @@
     "companyName": "Behavioral Health Allies",
     "originalName": "Behavioral Health Allies SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 1000,
@@ -4401,7 +4362,7 @@
     "companyName": "Eversana Intouch Waltz Health",
     "originalName": "Eversana Intouch/Waltz Health SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 460,
@@ -4414,7 +4375,7 @@
     "companyName": "BAADER Food Systems",
     "originalName": "BAADER Food Systems ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, KS ",
     "employees": null,
     "kcEmployees": 1500,
@@ -4427,7 +4388,7 @@
     "companyName": "Dynamic Logistix",
     "originalName": "Dynamic Logistix",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 4508,
@@ -4440,7 +4401,7 @@
     "companyName": "Cogent",
     "originalName": "Cogent SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Washington, D.C.",
     "employees": null,
     "kcEmployees": 48500,
@@ -4453,7 +4414,7 @@
     "companyName": "Fike Corp",
     "originalName": "Fike Corp SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Blue Springs, MO ",
     "employees": null,
     "kcEmployees": 418000,
@@ -4466,7 +4427,7 @@
     "companyName": "P1 Construction",
     "originalName": "P1 Construction SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lenexa, KS ",
     "employees": null,
     "kcEmployees": 26000,
@@ -4479,7 +4440,7 @@
     "companyName": "Lead Bank",
     "originalName": "Lead Bank SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": null,
     "kcEmployees": 49,
@@ -4492,7 +4453,7 @@
     "companyName": "Dickeys",
     "originalName": "Dickey\u2019s (BBQ) SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dallas, TX",
     "employees": null,
     "kcEmployees": 40,
@@ -4505,7 +4466,7 @@
     "companyName": "Dickies",
     "originalName": "Dickies (Jeans) SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Fort Worth, TX",
     "employees": null,
     "kcEmployees": 2100,
@@ -4518,7 +4479,7 @@
     "companyName": "Stanley Black and Decker",
     "originalName": "Stanley Black and Decker SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "New Britain, CT",
     "employees": null,
     "kcEmployees": 550,
@@ -4531,7 +4492,7 @@
     "companyName": "Bosch",
     "originalName": "Bosch SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Gerlingen, Germany//Farmington Hills, MI ",
     "employees": null,
     "kcEmployees": 1250,
@@ -4544,7 +4505,7 @@
     "companyName": "Lineage",
     "originalName": "Lineage SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Novi, MI ",
     "employees": null,
     "kcEmployees": 1480,
@@ -4557,7 +4518,7 @@
     "companyName": "Mas",
     "originalName": "Mas+",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, IL",
     "employees": null,
     "kcEmployees": 9500,
@@ -4570,7 +4531,7 @@
     "companyName": "Tenexai",
     "originalName": "Tenex.ai SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Seattle, WA ",
     "employees": null,
     "kcEmployees": 30000,
@@ -4583,7 +4544,7 @@
     "companyName": "Aprio",
     "originalName": "Aprio GM ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Atlanta, GA",
     "employees": null,
     "kcEmployees": 644,
@@ -4596,7 +4557,7 @@
     "companyName": "Ecco Select",
     "originalName": "Ecco Select (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": null,
     "kcEmployees": 240,
@@ -4609,7 +4570,7 @@
     "companyName": "Omaha Steaks",
     "originalName": "Omaha Steaks (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Omaha, NE ",
     "employees": null,
     "kcEmployees": 58400,
@@ -4622,7 +4583,7 @@
     "companyName": "Window World",
     "originalName": "Window World (SL/GM) (SKC has reached out a bunch in past but we're good) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "North Wilkesboro, NC ",
     "employees": null,
     "kcEmployees": 2758,
@@ -4635,7 +4596,7 @@
     "companyName": "Graybar",
     "originalName": "Graybar (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "St. Louis, MO ",
     "employees": null,
     "kcEmployees": 95,
@@ -4648,7 +4609,7 @@
     "companyName": "Georgia Pacific",
     "originalName": "Georgia Pacific (SL)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Atlanta, GA",
     "employees": null,
     "kcEmployees": 1100,
@@ -4661,7 +4622,7 @@
     "companyName": "Hampton Farms",
     "originalName": "Hampton Farms (SL/GM)",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Severn, NC",
     "employees": null,
     "kcEmployees": 1000,
@@ -4674,7 +4635,7 @@
     "companyName": "Brown Crouppen",
     "originalName": "Brown & Crouppen (SL) (SKC has reached out a bunch in past but we're good) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "St. Louis, MO ",
     "employees": null,
     "kcEmployees": null,
@@ -4687,7 +4648,7 @@
     "companyName": "Quanta Services",
     "originalName": "Quanta Services (SL) ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Houston, TX",
     "employees": null,
     "kcEmployees": null,
@@ -4700,7 +4661,7 @@
     "companyName": "Tamko",
     "originalName": "Tamko (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Galena, KS ",
     "employees": null,
     "kcEmployees": null,
@@ -4713,7 +4674,7 @@
     "companyName": "Kansas Lottery",
     "originalName": "Kansas Lottery (AD)",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Topeka, KS",
     "employees": null,
     "kcEmployees": null,
@@ -4726,7 +4687,7 @@
     "companyName": "Baker Group",
     "originalName": "Baker Group",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Ankeny, IA",
     "employees": null,
     "kcEmployees": null,
@@ -4739,7 +4700,7 @@
     "companyName": "TerraPower",
     "originalName": "TerraPower",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Bellevue, WA ",
     "employees": null,
     "kcEmployees": null,
@@ -4752,7 +4713,7 @@
     "companyName": "Farmers Insurance",
     "originalName": "Farmers Insurance SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Los Angeles, CA",
     "employees": 21000,
     "kcEmployees": null,
@@ -4765,7 +4726,7 @@
     "companyName": "Plano, TX",
     "originalName": "JC Penney SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Plano, TX",
     "employees": 60000,
     "kcEmployees": 901,
@@ -4778,7 +4739,7 @@
     "companyName": "Lake Forest, IL",
     "originalName": "Grainger SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Lake Forest, IL",
     "employees": 26000,
     "kcEmployees": 343,
@@ -4791,7 +4752,7 @@
     "companyName": "Kansas City, MO",
     "originalName": "Safe Haven Security AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 1400,
     "kcEmployees": 441,
@@ -4804,7 +4765,7 @@
     "companyName": "Kansas City, MO",
     "originalName": "RailCrew Xpress SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 3525,
     "kcEmployees": 54,
@@ -4817,7 +4778,7 @@
     "companyName": "Riverside, MO",
     "originalName": "Premium Waters Inc SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Riverside, MO ",
     "employees": 2108,
     "kcEmployees": 91,
@@ -4830,7 +4791,7 @@
     "companyName": "Agricultural Inputs",
     "originalName": "DuPont Pioneer MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Johnston, Iowa",
     "employees": 6389,
     "kcEmployees": 119,
@@ -4843,7 +4804,7 @@
     "companyName": "Management & Strategy Consulting",
     "originalName": "Maritz SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Fenton, Missouri",
     "employees": 3574,
     "kcEmployees": 20,
@@ -4856,7 +4817,7 @@
     "companyName": "Human Resources & Recruitment Services",
     "originalName": "Medical Solutions SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Omaha, Nebraska",
     "employees": 6161,
     "kcEmployees": 40,
@@ -4869,7 +4830,7 @@
     "companyName": "Insurance",
     "originalName": "MEM SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Springfield, Missouri",
     "employees": 706,
     "kcEmployees": 31,
@@ -4882,7 +4843,7 @@
     "companyName": "Accounting & Financial Services",
     "originalName": "Myers and Stauffer SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Leawood, Kansas",
     "employees": 824,
     "kcEmployees": 130,
@@ -4895,7 +4856,7 @@
     "companyName": "Legal Services",
     "originalName": "PPLSI SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Ada, Oklahoma",
     "employees": 4761,
     "kcEmployees": 36,
@@ -4908,7 +4869,7 @@
     "companyName": "Road Transportation",
     "originalName": "Prime Inc. SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Springfield, Missouri",
     "employees": 3446,
     "kcEmployees": 50,
@@ -4921,7 +4882,7 @@
     "companyName": "Private Security Services",
     "originalName": "Whelan Security SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "St. Louis, Missouri",
     "employees": 3450,
     "kcEmployees": 96,
@@ -4934,7 +4895,7 @@
     "companyName": "Columbia, SC",
     "originalName": "Pure Fishing SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Columbia, SC",
     "employees": 1600,
     "kcEmployees": 169,
@@ -4947,7 +4908,7 @@
     "companyName": "BasePower",
     "originalName": "BasePower MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Austin, TX",
     "employees": 200,
     "kcEmployees": null,
@@ -4960,7 +4921,7 @@
     "companyName": "Raleigh, NC",
     "originalName": "First Citizens Bank AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Raleigh, NC",
     "employees": 18000,
     "kcEmployees": 35,
@@ -4973,7 +4934,7 @@
     "companyName": "MCH",
     "originalName": "MCH MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Basel, Switzerland \\\\ Sweet Springs, MO",
     "employees": 1000,
     "kcEmployees": 314,
@@ -4986,7 +4947,7 @@
     "companyName": "Merck Animal Health (Merck & Co.)",
     "originalName": "Merck Animal Health (Merck & Co.) SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Rahway, NJ ",
     "employees": 6900,
     "kcEmployees": 240,
@@ -4999,7 +4960,7 @@
     "companyName": "Elanco Animal Health",
     "originalName": "Elanco Animal Health SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Indianpolis, IN ",
     "employees": 9225,
     "kcEmployees": 457,
@@ -5012,7 +4973,7 @@
     "companyName": "Ceva Animal Health",
     "originalName": "Ceva Animal Health SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Libourne, France//Lenexa, KS ",
     "employees": 7000,
     "kcEmployees": 20,
@@ -5025,7 +4986,7 @@
     "companyName": "DSM-firmenich (Animal Nutrition & Health)",
     "originalName": "DSM-firmenich (Animal Nutrition & Health) SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Geneva, Switzerland//Plainsboro, NJ",
     "employees": 30000,
     "kcEmployees": 118,
@@ -5038,7 +4999,7 @@
     "companyName": "Argenta Pharmaceutical Services",
     "originalName": "Argenta Pharmaceutical Services SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Auckland, New Zealand//Shawnee, KS ",
     "employees": 650,
     "kcEmployees": 5,
@@ -5051,7 +5012,7 @@
     "companyName": "Phibro Animal Health",
     "originalName": "Phibro Animal Health SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Teaneck, NJ",
     "employees": 2300,
     "kcEmployees": 35,
@@ -5064,7 +5025,7 @@
     "companyName": "Midmark Corporation (via its veterinary / animal-health equipment operations)",
     "originalName": "Midmark Corporation (via its veterinary / animal-health equipment operations) SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Tampa, FL",
     "employees": 2000,
     "kcEmployees": 27,
@@ -5077,7 +5038,7 @@
     "companyName": "ZuPreem (brand of Compana)",
     "originalName": "ZuPreem (brand of Compana) SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Denver, CO ",
     "employees": 800,
     "kcEmployees": 5,
@@ -5090,7 +5051,7 @@
     "companyName": "Adare Pharma Solutions",
     "originalName": "Adare Pharma Solutions SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Philadelphia, PA ",
     "employees": 800,
     "kcEmployees": null,
@@ -5103,7 +5064,7 @@
     "companyName": "Amsted Rail Company",
     "originalName": "Amsted Rail Company SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, IL",
     "employees": 17000,
     "kcEmployees": null,
@@ -5116,7 +5077,7 @@
     "companyName": "Durvet Inc",
     "originalName": "Durvet Inc SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Blue Springs, MO ",
     "employees": 75,
     "kcEmployees": 39,
@@ -5129,7 +5090,7 @@
     "companyName": "Berry Global Inc",
     "originalName": "Berry Global Inc SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Evansville, IL",
     "employees": 42000,
     "kcEmployees": 276,
@@ -5142,7 +5103,7 @@
     "companyName": "Tutera Senior Living & Healthcare",
     "originalName": "Tutera Senior Living & Healthcare SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 1400,
     "kcEmployees": 227,
@@ -5155,7 +5116,7 @@
     "companyName": "Ceco Concrete",
     "originalName": "Ceco Concrete Construction LLC SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO",
     "employees": 9000,
     "kcEmployees": 6500,
@@ -5168,7 +5129,7 @@
     "companyName": "Great Plains Manufacturing Inc",
     "originalName": "Great Plains Manufacturing Inc SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Salina, KS",
     "employees": 2300,
     "kcEmployees": 117,
@@ -5181,7 +5142,7 @@
     "companyName": "Experis",
     "originalName": "Experis (ManPowerGroup) SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Milwaukee, WI ",
     "employees": 10000,
     "kcEmployees": 36,
@@ -5194,7 +5155,7 @@
     "companyName": "Raymond Central",
     "originalName": "Raymond Central (Raymond Corporation) ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Greene, NY ",
     "employees": 2000,
     "kcEmployees": 85,
@@ -5207,7 +5168,7 @@
     "companyName": "OshKosh",
     "originalName": "OshKosh ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Oshkosh, WI ",
     "employees": 18500,
     "kcEmployees": 3,
@@ -5220,7 +5181,7 @@
     "companyName": "SimplyFUEL",
     "originalName": "SimplyFUEL",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 10,
     "kcEmployees": 3,
@@ -5233,7 +5194,7 @@
     "companyName": "SiteOne Landscape",
     "originalName": "SiteOne Landscape ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Roswell, GA",
     "employees": 8300,
     "kcEmployees": 38,
@@ -5246,7 +5207,7 @@
     "companyName": "theScore Bet",
     "originalName": "theScore Bet AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5259,7 +5220,7 @@
     "companyName": "Pathward",
     "originalName": "Pathward SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5272,7 +5233,7 @@
     "companyName": "Power Transitions",
     "originalName": "Power Transitions SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5285,7 +5246,7 @@
     "companyName": "Electrical Contractors of America",
     "originalName": "Electrical Contractors of America SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5298,7 +5259,7 @@
     "companyName": "P&G",
     "originalName": "P&G MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5311,7 +5272,7 @@
     "companyName": "Kraft Heinz",
     "originalName": "Kraft Heinz MG",
     "seller": "MG",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5324,7 +5285,7 @@
     "companyName": "McCormick",
     "originalName": "McCormick SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5337,7 +5298,7 @@
     "companyName": "Dutch Bros Coffee",
     "originalName": "Dutch Bros Coffee: AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5350,7 +5311,7 @@
     "companyName": "AutoAlert",
     "originalName": "AutoAlert: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5363,7 +5324,7 @@
     "companyName": "Precision Aerospace",
     "originalName": "Precision Aerospace: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5376,7 +5337,7 @@
     "companyName": "Levi\u2019s",
     "originalName": "Levi\u2019s: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5389,7 +5350,7 @@
     "companyName": "Five Below",
     "originalName": "Five Below: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5402,7 +5363,7 @@
     "companyName": "Burlington",
     "originalName": "Burlington: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5415,7 +5376,7 @@
     "companyName": "Carters",
     "originalName": "Carters: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5428,7 +5389,7 @@
     "companyName": "Express",
     "originalName": "Express:\u00a0SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5441,7 +5402,7 @@
     "companyName": "Maurices",
     "originalName": "Maurices: SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "",
     "employees": null,
     "kcEmployees": null,
@@ -5454,7 +5415,7 @@
     "companyName": "North Liberty, IA",
     "originalName": "Heartland Express SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "North Liberty, IA",
     "employees": 5220,
     "kcEmployees": 6,
@@ -5467,7 +5428,7 @@
     "companyName": "Beaverton, OR",
     "originalName": "Reser's Fine Foods AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Beaverton, OR",
     "employees": 5000,
     "kcEmployees": 51,
@@ -5480,7 +5441,7 @@
     "companyName": "Oradell, NY",
     "originalName": "Power Engineers AD",
     "seller": "AD",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Oradell, NY",
     "employees": 4000,
     "kcEmployees": 149,
@@ -5493,7 +5454,7 @@
     "companyName": "Kansas City, KS",
     "originalName": "Harcros Chemicals SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, KS ",
     "employees": 500,
     "kcEmployees": 122,
@@ -5506,7 +5467,7 @@
     "companyName": "Shawnee, KS",
     "originalName": "Nazdar SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Shawnee, KS ",
     "employees": 500,
     "kcEmployees": 116,
@@ -5519,7 +5480,7 @@
     "companyName": "Kansas City, KS",
     "originalName": "McCray Lumber SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, KS ",
     "employees": 200,
     "kcEmployees": 103,
@@ -5532,7 +5493,7 @@
     "companyName": "Greenwich, CT",
     "originalName": "Zinnia SL",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Greenwich, CT",
     "employees": 2800,
     "kcEmployees": 31,
@@ -5545,7 +5506,7 @@
     "companyName": "Helsinki, Finland//Ottawa, KS",
     "originalName": "Kalmar SL ",
     "seller": "SL",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Helsinki, Finland//Ottawa, KS ",
     "employees": 5200,
     "kcEmployees": 144,
@@ -5558,7 +5519,7 @@
     "companyName": "Midwest Health",
     "originalName": "Midwest Health ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Topeka, KS ",
     "employees": 1374,
     "kcEmployees": 118,
@@ -5571,7 +5532,7 @@
     "companyName": "Patmos",
     "originalName": "Patmos ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 88,
     "kcEmployees": 17,
@@ -5584,7 +5545,7 @@
     "companyName": "Flint Group",
     "originalName": "Flint Group",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Luxembourg//Livonia, MI",
     "employees": 5000,
     "kcEmployees": 20,
@@ -5597,7 +5558,7 @@
     "companyName": "Scrap Management Industries",
     "originalName": "Scrap Management Industries ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 800,
     "kcEmployees": 23,
@@ -5610,7 +5571,7 @@
     "companyName": "Sealy",
     "originalName": "Sealy",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Trinity, NC",
     "employees": 12000,
     "kcEmployees": 18,
@@ -5623,7 +5584,7 @@
     "companyName": "Ethos",
     "originalName": "Ethos",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Austin, TX",
     "employees": 750,
     "kcEmployees": 7,
@@ -5636,7 +5597,7 @@
     "companyName": "Lever1",
     "originalName": "Lever1",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Overland Park, KS",
     "employees": 40,
     "kcEmployees": 38,
@@ -5649,7 +5610,7 @@
     "companyName": "Peerless Products",
     "originalName": "Peerless Products",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Fort Scott, KS",
     "employees": 367,
     "kcEmployees": 8,
@@ -5662,7 +5623,7 @@
     "companyName": "Central Garden & Pet",
     "originalName": "Central Garden & Pet",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Walnut Creek, CA",
     "employees": 6000,
     "kcEmployees": 2,
@@ -5675,7 +5636,7 @@
     "companyName": "Spectrum Brands",
     "originalName": "Spectrum Brands",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Middleton, WI ",
     "employees": 3000,
     "kcEmployees": 130,
@@ -5688,7 +5649,7 @@
     "companyName": "Reinhart Foodservice",
     "originalName": "Reinhart Foodservice",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, IL ",
     "employees": 1840,
     "kcEmployees": 33,
@@ -5701,7 +5662,7 @@
     "companyName": "TruGreen",
     "originalName": "TruGreen",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Franklin, TN ",
     "employees": 15000,
     "kcEmployees": 62,
@@ -5714,7 +5675,7 @@
     "companyName": "Skystream Energy",
     "originalName": "Skystream Energy ",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 20,
     "kcEmployees": 2,
@@ -5727,7 +5688,7 @@
     "companyName": "American Family Insurance",
     "originalName": "American Family Insurance",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Madison, WI ",
     "employees": 13000,
     "kcEmployees": 1000,
@@ -5740,7 +5701,7 @@
     "companyName": "Ripple",
     "originalName": "Ripple",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "San Francisco, CA",
     "employees": 1000,
     "kcEmployees": 24,
@@ -5753,7 +5714,7 @@
     "companyName": "AbbVie",
     "originalName": "AbbVie",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, IL ",
     "employees": 55000,
     "kcEmployees": 103,
@@ -5766,7 +5727,7 @@
     "companyName": "iFit",
     "originalName": "iFit",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Logan, UT ",
     "employees": 2400,
     "kcEmployees": 2,
@@ -5779,7 +5740,7 @@
     "companyName": "Southwest Airlines",
     "originalName": "Southwest Airlines",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Dallas, TX ",
     "employees": 72000,
     "kcEmployees": 295,
@@ -5792,7 +5753,7 @@
     "companyName": "True Value",
     "originalName": "True Value",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Chicago, IL ",
     "employees": 2500,
     "kcEmployees": 56,
@@ -5805,7 +5766,7 @@
     "companyName": "Hy-Vee",
     "originalName": "Hy-Vee",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Des Moines, IA ",
     "employees": 75000,
     "kcEmployees": 2000,
@@ -5818,7 +5779,7 @@
     "companyName": "Amway",
     "originalName": "Amway",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Ada Township, MI ",
     "employees": 14000,
     "kcEmployees": 30,
@@ -5831,7 +5792,7 @@
     "companyName": "USANA Health Sciences",
     "originalName": "USANA Health Sciences",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Salt Lake City, UT ",
     "employees": 1800,
     "kcEmployees": 17,
@@ -5844,7 +5805,7 @@
     "companyName": "New Horizons Computer Learning Centers",
     "originalName": "New Horizons Computer Learning Centers",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Conshohocken PA ",
     "employees": 3800,
     "kcEmployees": 27,
@@ -5857,7 +5818,7 @@
     "companyName": "Anytime Fitness",
     "originalName": "Anytime Fitness",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Woodbury, MN",
     "employees": 18000,
     "kcEmployees": 56,
@@ -5870,7 +5831,7 @@
     "companyName": "Custom One Truck Source",
     "originalName": "Custom One Truck Source",
     "seller": "Unassigned",
-    "status": "Standard",
+    "status": "Outreach",
     "hq": "Kansas City, MO ",
     "employees": 2600,
     "kcEmployees": 426,
@@ -6077,11 +6038,69 @@
             const [editingSellerId, setEditingSellerId] = useState(null);
             const [sortConfig, setSortConfig] = useState({ key: 'companyName', direction: 'asc' });
             const [activeTab, setActiveTab] = useState('prospects');
+            
+            // Modal states
+            const [showAddModal, setShowAddModal] = useState(false);
+            const [showNotesModal, setShowNotesModal] = useState(false);
+            const [selectedCompany, setSelectedCompany] = useState(null);
+            const [companyNotes, setCompanyNotes] = useState(() => {
+                const saved = localStorage.getItem('skc_company_notes');
+                return saved ? JSON.parse(saved) : {};
+            });
 
             // Save to localStorage whenever prospects change
             useEffect(() => {
                 localStorage.setItem('skc_prospects', JSON.stringify(prospects));
             }, [prospects]);
+
+            // Save company notes to localStorage
+            useEffect(() => {
+                localStorage.setItem('skc_company_notes', JSON.stringify(companyNotes));
+            }, [companyNotes]);
+
+            // Add new company
+            const handleAddCompany = (formData) => {
+                const newCompany = {
+                    id: Math.max(...prospects.map(p => p.id), 0) + 1,
+                    companyName: formData.companyName,
+                    originalName: formData.companyName,
+                    seller: formData.seller || 'Unassigned',
+                    status: formData.status || 'Outreach',
+                    hq: formData.hq || '',
+                    employees: parseInt(formData.employees) || 0,
+                    kcEmployees: formData.kcEmployees ? parseInt(formData.kcEmployees) : null,
+                    revenue: formData.revenue ? parseInt(formData.revenue) : 0,
+                    context: formData.context || '',
+                    skcNotes: formData.skcNotes || ''
+                };
+                setProspects(prev => [...prev, newCompany]);
+                setShowAddModal(false);
+            };
+
+            // Delete company
+            const handleDeleteCompany = (companyId, companyName) => {
+                if (window.confirm(`Are you sure you want to delete ${companyName}? This action cannot be undone.`)) {
+                    setProspects(prev => prev.filter(p => p.id !== companyId));
+                    // Also delete associated notes
+                    const updatedNotes = { ...companyNotes };
+                    delete updatedNotes[companyId];
+                    setCompanyNotes(updatedNotes);
+                }
+            };
+
+            // Open notes modal
+            const openNotesModal = (company) => {
+                setSelectedCompany(company);
+                setShowNotesModal(true);
+            };
+
+            // Save notes for a company
+            const saveCompanyNotes = (companyId, notes) => {
+                setCompanyNotes(prev => ({
+                    ...prev,
+                    [companyId]: notes
+                }));
+            };
 
             // Update seller for a prospect
             const updateSeller = (prospectId, newSeller) => {
@@ -6138,11 +6157,12 @@
                     Unassigned: prospects.filter(p => p.seller === 'Unassigned').length,
                 };
                 const byStatus = {
-                    Active: prospects.filter(p => p.status === 'Active').length,
-                    'In Progress': prospects.filter(p => p.status === 'In Progress').length,
-                    Cold: prospects.filter(p => p.status === 'Cold').length,
-                    Hold: prospects.filter(p => p.status === 'Hold').length,
-                    Declined: prospects.filter(p => p.status === 'Declined').length,
+                    'Outreach': prospects.filter(p => p.status === 'Outreach').length,
+                    'Intro Discussion': prospects.filter(p => p.status === 'Intro Discussion').length,
+                    'Deck/Frameworks': prospects.filter(p => p.status === 'Deck/Frameworks').length,
+                    'Contract Negotiations': prospects.filter(p => p.status === 'Contract Negotiations').length,
+                    'HOLD': prospects.filter(p => p.status === 'HOLD').length,
+                    'Declined': prospects.filter(p => p.status === 'Declined').length,
                 };
                 return { total, bySeller, byStatus };
             }, [prospects]);
@@ -6167,14 +6187,12 @@
 
             const getStatusColor = (status) => {
                 const colors = {
-                    Active: 'bg-green-100 text-green-800',
-                    'In Progress': 'bg-blue-100 text-blue-800',
-                    Cold: 'bg-gray-200 text-gray-700',
-                    Hold: 'bg-yellow-100 text-yellow-800',
-                    Declined: 'bg-red-100 text-red-800',
-                    Deprioritized: 'bg-orange-100 text-orange-800',
-                    Pending: 'bg-indigo-100 text-indigo-800',
-                    Standard: 'bg-gray-100 text-gray-600'
+                    'Outreach': 'bg-blue-100 text-blue-800',
+                    'Intro Discussion': 'bg-cyan-100 text-cyan-800',
+                    'Deck/Frameworks': 'bg-purple-100 text-purple-800',
+                    'Contract Negotiations': 'bg-green-100 text-green-800',
+                    'HOLD': 'bg-yellow-100 text-yellow-800',
+                    'Declined': 'bg-red-100 text-red-800'
                 };
                 return colors[status] || 'bg-gray-100 text-gray-600';
             };
@@ -6235,7 +6253,7 @@
 
             return (
                 <div className="min-h-screen bg-gray-50">
-                   {/* Header with Logout */}
+                    {/* Header */}
                     <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white shadow-lg">
                         <div className="max-w-7xl mx-auto px-4 py-6">
                             <div className="flex items-center justify-between">
@@ -6361,16 +6379,16 @@
                                     <div className="text-sm text-gray-500 mb-2">Active Pipeline</div>
                                     <div className="space-y-1">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-green-600">Active:</span>
-                                            <span className="font-semibold">{stats.byStatus.Active}</span>
+                                            <span className="text-cyan-600">Intro:</span>
+                                            <span className="font-semibold">{stats.byStatus['Intro Discussion']}</span>
                                         </div>
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-blue-600">In Progress:</span>
-                                            <span className="font-semibold">{stats.byStatus['In Progress']}</span>
+                                            <span className="text-purple-600">Deck:</span>
+                                            <span className="font-semibold">{stats.byStatus['Deck/Frameworks']}</span>
                                         </div>
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Cold:</span>
-                                            <span className="font-semibold">{stats.byStatus.Cold}</span>
+                                            <span className="text-green-600">Contract:</span>
+                                            <span className="font-semibold">{stats.byStatus['Contract Negotiations']}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -6378,8 +6396,8 @@
                                     <div className="text-sm text-gray-500 mb-2">On Hold / Declined</div>
                                     <div className="space-y-1">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-yellow-600">Hold:</span>
-                                            <span className="font-semibold">{stats.byStatus.Hold}</span>
+                                            <span className="text-yellow-600">HOLD:</span>
+                                            <span className="font-semibold">{stats.byStatus.HOLD}</span>
                                         </div>
                                         <div className="flex justify-between text-sm">
                                             <span className="text-red-600">Declined:</span>
@@ -6389,8 +6407,18 @@
                                 </div>
                             </div>
 
-                            {/* Search and Filters */}
+                            {/* Search, Filters, and Add Button */}
                             <div className="bg-white rounded-lg shadow mb-6 p-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-lg font-semibold text-gray-900">Company Database</h2>
+                                    <button
+                                        onClick={() => setShowAddModal(true)}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold flex items-center gap-2"
+                                    >
+                                        <span className="text-lg">+</span>
+                                        Add Company
+                                    </button>
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="md:col-span-1">
                                         <input
@@ -6422,14 +6450,12 @@
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         >
                                             <option value="all">All Statuses</option>
-                                            <option value="Active">Active</option>
-                                            <option value="In Progress">In Progress</option>
-                                            <option value="Cold">Cold</option>
-                                            <option value="Hold">Hold</option>
+                                            <option value="Outreach">Outreach</option>
+                                            <option value="Intro Discussion">Intro Discussion</option>
+                                            <option value="Deck/Frameworks">Deck/Frameworks</option>
+                                            <option value="Contract Negotiations">Contract Negotiations</option>
+                                            <option value="HOLD">HOLD</option>
                                             <option value="Declined">Declined</option>
-                                            <option value="Deprioritized">Deprioritized</option>
-                                            <option value="Pending">Pending</option>
-                                            <option value="Standard">Standard</option>
                                         </select>
                                     </div>
                                 </div>
@@ -6490,7 +6516,17 @@
                                                 <React.Fragment key={prospect.id}>
                                                     <tr className="hover:bg-gray-50">
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="font-medium text-gray-900">{prospect.companyName}</div>
+                                                            <button
+                                                                onClick={() => openNotesModal(prospect)}
+                                                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                                            >
+                                                                {prospect.companyName}
+                                                            </button>
+                                                            {companyNotes[prospect.id] && companyNotes[prospect.id].length > 0 && (
+                                                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                                    {companyNotes[prospect.id].length} {companyNotes[prospect.id].length === 1 ? 'note' : 'notes'}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <SellerEditor prospect={prospect} />
@@ -6512,12 +6548,24 @@
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                             {formatEmployees(prospect.kcEmployees)}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                                                             <button
                                                                 onClick={() => setExpandedId(expandedId === prospect.id ? null : prospect.id)}
                                                                 className="text-blue-600 hover:text-blue-800 font-medium"
                                                             >
                                                                 {expandedId === prospect.id ? 'Hide' : 'Details'}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openNotesModal(prospect)}
+                                                                className="text-blue-600 hover:text-blue-800 font-medium"
+                                                            >
+                                                                Notes
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteCompany(prospect.id, prospect.companyName)}
+                                                                className="text-red-600 hover:text-red-800 font-medium"
+                                                            >
+                                                                Delete
                                                             </button>
                                                         </td>
                                                     </tr>
@@ -7670,8 +7718,507 @@
                             </div>
                         </div>
                     )}
+
+                    {/* Add Company Modal */}
+                    {showAddModal && (
+                        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+                            <div className="modal-content" style={{width: '600px', maxWidth: '90%'}} onClick={(e) => e.stopPropagation()}>
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-2xl font-bold text-gray-900">Add New Company</h2>
+                                        <button
+                                            onClick={() => setShowAddModal(false)}
+                                            className="text-gray-400 hover:text-gray-600 text-2xl"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+
+                                    <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const formData = new FormData(e.target);
+                                        handleAddCompany({
+                                            companyName: formData.get('companyName'),
+                                            employees: formData.get('employees'),
+                                            revenue: formData.get('revenue'),
+                                            hq: formData.get('hq'),
+                                            kcEmployees: formData.get('kcEmployees'),
+                                            seller: formData.get('seller'),
+                                            status: formData.get('status'),
+                                            context: formData.get('context'),
+                                            skcNotes: formData.get('skcNotes')
+                                        });
+                                    }}>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Company Name <span className="text-red-600">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="companyName"
+                                                    required
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    placeholder="Enter company name"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Number of Employees <span className="text-red-600">*</span>
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="employees"
+                                                    required
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    placeholder="e.g., 500"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Annual Revenue <span className="text-red-600">*</span>
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="revenue"
+                                                    required
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    placeholder="e.g., 50000000 (for $50M)"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">Enter in dollars (e.g., 50000000 for $50M)</p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Headquarters</label>
+                                                <input
+                                                    type="text"
+                                                    name="hq"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    placeholder="e.g., Kansas City, MO"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">KC Employees</label>
+                                                <input
+                                                    type="number"
+                                                    name="kcEmployees"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Seller</label>
+                                                    <select
+                                                        name="seller"
+                                                        defaultValue="Unassigned"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    >
+                                                        <option value="Unassigned">Unassigned</option>
+                                                        <option value="MG">MG</option>
+                                                        <option value="AD">AD</option>
+                                                        <option value="SL">SL</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                                    <select
+                                                        name="status"
+                                                        defaultValue="Outreach"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    >
+                                                        <option value="Outreach">Outreach</option>
+                                                        <option value="Intro Discussion">Intro Discussion</option>
+                                                        <option value="Deck/Frameworks">Deck/Frameworks</option>
+                                                        <option value="Contract Negotiations">Contract Negotiations</option>
+                                                        <option value="HOLD">HOLD</option>
+                                                        <option value="Declined">Declined</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Company Context</label>
+                                                <textarea
+                                                    name="context"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    rows="3"
+                                                    placeholder="Background information, KC presence, etc."
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">SKC Notes</label>
+                                                <textarea
+                                                    name="skcNotes"
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    rows="2"
+                                                    placeholder="Internal notes about this prospect"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAddModal(false)}
+                                                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+                                            >
+                                                Add Company
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Company Notes Modal */}
+                    {showNotesModal && selectedCompany && (
+                        <CompanyNotesModal 
+                            company={selectedCompany}
+                            notes={companyNotes[selectedCompany.id] || []}
+                            onClose={() => {
+                                setShowNotesModal(false);
+                                setSelectedCompany(null);
+                            }}
+                            onSaveNotes={saveCompanyNotes}
+                        />
+                    )}
                 </div>
             );
+        }
+
+        // Company Notes Modal Component
+        function CompanyNotesModal({ company, notes, onClose, onSaveNotes }) {
+            const [localNotes, setLocalNotes] = React.useState(notes);
+            const [newNote, setNewNote] = React.useState('');
+            const [editingNoteId, setEditingNoteId] = React.useState(null);
+            const [editText, setEditText] = React.useState('');
+
+            const handleAddNote = () => {
+                if (newNote.trim()) {
+                    const note = {
+                        id: Date.now(),
+                        text: newNote,
+                        timestamp: new Date().toISOString(),
+                        author: 'Current User'
+                    };
+                    setLocalNotes([note, ...localNotes]);
+                    setNewNote('');
+                }
+            };
+
+            const handleDeleteNote = (noteId) => {
+                if (confirm('Delete this note?')) {
+                    setLocalNotes(localNotes.filter(n => n.id !== noteId));
+                }
+            };
+
+            const startEdit = (note) => {
+                setEditingNoteId(note.id);
+                setEditText(note.text);
+            };
+
+            const saveEdit = (noteId) => {
+                setLocalNotes(localNotes.map(note =>
+                    note.id === noteId ? { ...note, text: editText, edited: true } : note
+                ));
+                setEditingNoteId(null);
+                setEditText('');
+            };
+
+            const handleSave = () => {
+                onSaveNotes(company.id, localNotes);
+                onClose();
+            };
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content" style={{width: '800px', maxWidth: '90%'}} onClick={(e) => e.stopPropagation()}>
+                        <div className="p-6">
+                            <div className="flex items-start justify-between mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900">{company.companyName}</h2>
+                                    <p className="text-sm text-gray-500 mt-1">Company History & Notes</p>
+                                </div>
+                                <button
+                                    onClick={onClose}
+                                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            {/* Company Quick Info */}
+                            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                        <span className="text-gray-500">HQ:</span>
+                                        <span className="ml-2 font-medium">{company.hq || 'N/A'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Revenue:</span>
+                                        <span className="ml-2 font-medium">
+                                            {company.revenue >= 1000000000 
+                                                ? `$${(company.revenue / 1000000000).toFixed(1)}B`
+                                                : company.revenue >= 1000000
+                                                ? `$${(company.revenue / 1000000).toFixed(1)}M`
+                                                : company.revenue
+                                                ? `$${company.revenue.toLocaleString()}`
+                                                : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Status:</span>
+                                        <span className="ml-2 font-medium">{company.status}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Add Note Section */}
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Add New Note</label>
+                                <textarea
+                                    value={newNote}
+                                    onChange={(e) => setNewNote(e.target.value)}
+                                    rows="3"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter note about conversation, meeting, or update..."
+                                />
+                                <div className="flex justify-end mt-2">
+                                    <button
+                                        onClick={handleAddNote}
+                                        disabled={!newNote.trim()}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    >
+                                        Add Note
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Notes History */}
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                                    History ({localNotes.length} {localNotes.length === 1 ? 'note' : 'notes'})
+                                </h3>
+                                
+                                {localNotes.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500">
+                                        <div className="text-4xl mb-2">📝</div>
+                                        <div className="text-sm">No notes yet. Add one above to start tracking history.</div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                                        {localNotes.map((note) => (
+                                            <div key={note.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="text-xs text-gray-500">
+                                                        {new Date(note.timestamp).toLocaleString()}
+                                                        {note.edited && <span className="ml-2 italic">(edited)</span>}
+                                                    </div>
+                                                    <div className="flex space-x-2">
+                                                        {editingNoteId === note.id ? (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => saveEdit(note.id)}
+                                                                    className="text-xs text-green-600 hover:text-green-800"
+                                                                >
+                                                                    Save
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setEditingNoteId(null)}
+                                                                    className="text-xs text-gray-600 hover:text-gray-800"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => startEdit(note)}
+                                                                    className="text-xs text-blue-600 hover:text-blue-800"
+                                                                >
+                                                                    Edit
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteNote(note.id)}
+                                                                    className="text-xs text-red-600 hover:text-red-800"
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {editingNoteId === note.id ? (
+                                                    <textarea
+                                                        value={editText}
+                                                        onChange={(e) => setEditText(e.target.value)}
+                                                        rows="3"
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.text}</p>
+                                                )}
+                                                <div className="text-xs text-gray-400 mt-2">By: {note.author}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="flex justify-end gap-2 pt-4 border-t mt-6">
+                                <button
+                                    onClick={onClose}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Login Screen Component
+        function LoginScreen() {
+            const [isLoading, setIsLoading] = useState(false);
+
+            const handleLogin = async () => {
+                setIsLoading(true);
+                try {
+                    await window.auth0Client.loginWithRedirect({
+                        authorizationParams: {
+                            redirect_uri: window.location.origin
+                        }
+                    });
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('Login failed: ' + error.message);
+                    setIsLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-600 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                        <div className="text-center mb-8">
+                            <div className="text-6xl mb-4">🔒</div>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">SKC Intelligence Hub</h1>
+                            <p className="text-gray-600">Secure Access - Team Members Only</p>
+                        </div>
+
+                        <button
+                            onClick={handleLogin}
+                            disabled={isLoading}
+                            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-semibold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center justify-center">
+                                    <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Logging in...
+                                </span>
+                            ) : (
+                                '🔓 Login with Auth0'
+                            )}
+                        </button>
+
+                        <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+                            <p className="text-xs text-gray-500">
+                                Secure authentication powered by Auth0
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Root App Component with Auth0
+        function RootApp() {
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [isLoading, setIsLoading] = useState(true);
+            const [user, setUser] = useState(null);
+
+            useEffect(() => {
+                const initAuth = async () => {
+                    try {
+                        window.auth0Client = await window.auth0.createAuth0Client({
+                            domain: AUTH0_DOMAIN,
+                            clientId: AUTH0_CLIENT_ID,
+                            authorizationParams: {
+                                redirect_uri: window.location.origin
+                            }
+                        });
+
+                        // Handle redirect callback
+                        if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
+                            await window.auth0Client.handleRedirectCallback();
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        }
+
+                        const authenticated = await window.auth0Client.isAuthenticated();
+                        setIsAuthenticated(authenticated);
+
+                        if (authenticated) {
+                            const userInfo = await window.auth0Client.getUser();
+                            setUser(userInfo);
+                        }
+                    } catch (error) {
+                        console.error('Auth initialization error:', error);
+                        alert('Authentication error: ' + error.message);
+                    } finally {
+                        setIsLoading(false);
+                    }
+                };
+
+                initAuth();
+            }, []);
+
+            const handleLogout = async () => {
+                await window.auth0Client.logout({
+                    logoutParams: {
+                        returnTo: window.location.origin
+                    }
+                });
+            };
+
+            if (isLoading) {
+                return (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="text-6xl mb-4">⚙️</div>
+                            <div className="text-xl text-gray-600">Initializing secure authentication...</div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!isAuthenticated) {
+                return <LoginScreen />;
+            }
+
+            return <App user={user} onLogout={handleLogout} />;
         }
 
         // Search Query Manager - Make globally accessible
@@ -7872,72 +8419,7 @@
             setInterval(() => window.fetchNewsSignals(), 15 * 60 * 1000);
         });
 
-       // ============================================
-        // ROOT COMPONENT WITH AUTH0
-        // ============================================
-        function RootApp() {
-            const [isAuthenticated, setIsAuthenticated] = useState(false);
-            const [isLoading, setIsLoading] = useState(true);
-            const [user, setUser] = useState(null);
-
-            useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        window.auth0Client = await window.auth0.createAuth0Client({
-                            domain: AUTH0_DOMAIN,
-                            clientId: AUTH0_CLIENT_ID,
-                            authorizationParams: {
-                                redirect_uri: window.location.origin
-                            }
-                        });
-
-                        if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
-                            await window.auth0Client.handleRedirectCallback();
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                        }
-
-                        const authenticated = await window.auth0Client.isAuthenticated();
-                        setIsAuthenticated(authenticated);
-
-                        if (authenticated) {
-                            const userInfo = await window.auth0Client.getUser();
-                            setUser(userInfo);
-                        }
-                    } catch (error) {
-                        console.error('Auth initialization error:', error);
-                        alert('Authentication error: ' + error.message + '\n\nPlease check your Auth0 credentials.');
-                    } finally {
-                        setIsLoading(false);
-                    }
-                };
-
-                initAuth();
-            }, []);
-
-            const handleLogout = async () => {
-                await window.auth0Client.logout({
-                    logoutParams: {
-                        returnTo: window.location.origin
-                    }
-                });
-            };
-
-            if (isLoading) {
-                return (
-                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                        <div className="text-center">
-                            <div className="text-6xl mb-4">⚙️</div>
-                            <div className="text-xl text-gray-600">Initializing secure authentication...</div>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (!isAuthenticated) {
-                return <LoginScreen />;
-            }
-
-            return <App user={user} onLogout={handleLogout} />;
-        }
-
         ReactDOM.render(<RootApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
