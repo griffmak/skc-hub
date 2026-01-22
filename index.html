@@ -6029,12 +6029,7 @@
             const [prospects, setProspects] = useState(() => {
                 // Try to load from localStorage first
                 const saved = localStorage.getItem('skc_prospects');
-                const loadedProspects = saved ? JSON.parse(saved) : INITIAL_PROSPECTS;
-                // Ensure all prospects have lastContacted field
-                return loadedProspects.map(p => ({
-                    ...p,
-                    lastContacted: p.lastContacted || null
-                }));
+                return saved ? JSON.parse(saved) : INITIAL_PROSPECTS;
             });
             const [searchTerm, setSearchTerm] = useState('');
             const [sellerFilter, setSellerFilter] = useState('all');
@@ -6119,8 +6114,6 @@
                     ...prev,
                     [companyId]: notes
                 }));
-                // Auto-update lastContacted when notes are added
-                updateLastContacted(companyId);
             };
 
             // Save contacts for a company
@@ -6129,18 +6122,9 @@
                     ...prev,
                     [companyId]: contacts
                 }));
-                // Auto-update lastContacted when contacts are added/edited
-                updateLastContacted(companyId);
             };
 
-            // Update last contacted date
-            const updateLastContacted = (companyId) => {
-                setProspects(prev => prev.map(p =>
-                    p.id === companyId ? { ...p, lastContacted: new Date().toISOString() } : p
-                ));
-            };
-
-            // Calculate days since last contact
+            // Calculate days since last contact for a specific contact
             const getDaysSinceContact = (lastContacted) => {
                 if (!lastContacted) return null;
                 const now = new Date();
@@ -6150,13 +6134,40 @@
                 return diffDays;
             };
 
-            // Get contact status (fresh, stale, cold)
+            // Get contact status for a specific contact
             const getContactStatus = (lastContacted) => {
                 const days = getDaysSinceContact(lastContacted);
-                if (days === null) return { status: 'never', color: 'gray', badge: '⭕ Never contacted', alert: true };
+                if (days === null) return { status: 'never', color: 'gray', badge: '⭕ Not contacted', alert: true };
                 if (days <= 5) return { status: 'fresh', color: 'green', badge: `${days}d ago 🟢`, alert: false };
                 if (days <= 14) return { status: 'stale', color: 'yellow', badge: `${days}d ago ⚠️`, alert: true };
                 return { status: 'cold', color: 'red', badge: `${days}d ago ❄️`, alert: true };
+            };
+
+            // Get the worst contact status for a company (based on all contacts)
+            const getCompanyContactStatus = (companyId) => {
+                const contacts = companyContacts[companyId] || [];
+                
+                // If no contacts, return "no outreach yet"
+                if (contacts.length === 0) {
+                    return { status: 'noContacts', color: 'gray', badge: '⭕ No outreach yet', alert: true };
+                }
+
+                // Find the most overdue contact
+                let worstStatus = { status: 'fresh', days: 0 };
+                
+                contacts.forEach(contact => {
+                    const days = getDaysSinceContact(contact.lastContacted);
+                    if (days === null || days > worstStatus.days) {
+                        worstStatus = { status: getContactStatus(contact.lastContacted).status, days: days || 999 };
+                    }
+                });
+
+                // Return the worst status found
+                if (worstStatus.days === 0) return { status: 'fresh', color: 'green', badge: 'All fresh 🟢', alert: false };
+                if (worstStatus.days <= 5) return { status: 'fresh', color: 'green', badge: `${worstStatus.days}d ago 🟢`, alert: false };
+                if (worstStatus.days <= 14) return { status: 'stale', color: 'yellow', badge: `${worstStatus.days}d ago ⚠️`, alert: true };
+                if (worstStatus.days === 999) return { status: 'never', color: 'gray', badge: '⭕ No outreach yet', alert: true };
+                return { status: 'cold', color: 'red', badge: `${worstStatus.days}d ago ❄️`, alert: true };
             };
 
             // Update seller for a prospect
@@ -6177,14 +6188,14 @@
                     const matchesSeller = sellerFilter === 'all' || p.seller === sellerFilter;
                     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
                     
-                    // Contact status filter
+                    // Contact status filter - based on company's contacts
                     let matchesContactStatus = true;
                     if (contactStatusFilter === 'overdue') {
-                        const days = getDaysSinceContact(p.lastContacted);
-                        matchesContactStatus = days === null || days > 5;
+                        const companyStatus = getCompanyContactStatus(p.id);
+                        matchesContactStatus = companyStatus.alert; // overdue if any contact needs attention
                     } else if (contactStatusFilter === 'fresh') {
-                        const days = getDaysSinceContact(p.lastContacted);
-                        matchesContactStatus = days !== null && days <= 5;
+                        const companyStatus = getCompanyContactStatus(p.id);
+                        matchesContactStatus = !companyStatus.alert && companyStatus.status !== 'noContacts';
                     }
                     
                     return matchesSearch && matchesSeller && matchesStatus && matchesContactStatus;
@@ -6213,7 +6224,7 @@
                 });
 
                 return filtered;
-            }, [prospects, searchTerm, sellerFilter, statusFilter, contactStatusFilter, sortConfig]);
+            }, [prospects, searchTerm, sellerFilter, statusFilter, contactStatusFilter, sortConfig, companyContacts]);
 
             // Calculate stats
             const stats = useMemo(() => {
@@ -6233,29 +6244,37 @@
                     'Declined': prospects.filter(p => p.status === 'Declined').length,
                 };
                 
-                // Contact status tracking
+                // Contact status tracking - based on contacts, not companies
                 const byContactStatus = {
-                    overdue: prospects.filter(p => {
-                        const days = getDaysSinceContact(p.lastContacted);
-                        return days === null || days > 5;
-                    }).length,
+                    overdue: prospects.filter(p => getCompanyContactStatus(p.id).alert).length,
                     fresh: prospects.filter(p => {
-                        const days = getDaysSinceContact(p.lastContacted);
-                        return days !== null && days <= 5;
+                        const status = getCompanyContactStatus(p.id);
+                        return !status.alert && status.status !== 'noContacts';
                     }).length,
-                    stale: prospects.filter(p => {
-                        const days = getDaysSinceContact(p.lastContacted);
-                        return days !== null && days > 5 && days <= 14;
-                    }).length,
-                    cold: prospects.filter(p => {
-                        const days = getDaysSinceContact(p.lastContacted);
-                        return days !== null && days > 14;
-                    }).length,
-                    never: prospects.filter(p => !p.lastContacted).length
+                    noContacts: prospects.filter(p => (companyContacts[p.id] || []).length === 0).length
                 };
                 
+                // Calculate stale and cold for detailed breakdown
+                byContactStatus.stale = prospects.filter(p => {
+                    const contacts = companyContacts[p.id] || [];
+                    if (contacts.length === 0) return false;
+                    return contacts.some(c => {
+                        const days = getDaysSinceContact(c.lastContacted);
+                        return days !== null && days > 5 && days <= 14;
+                    });
+                }).length;
+                
+                byContactStatus.cold = prospects.filter(p => {
+                    const contacts = companyContacts[p.id] || [];
+                    if (contacts.length === 0) return false;
+                    return contacts.some(c => {
+                        const days = getDaysSinceContact(c.lastContacted);
+                        return days !== null && days > 14;
+                    });
+                }).length;
+                
                 return { total, bySeller, byStatus, byContactStatus };
-            }, [prospects]);
+            }, [prospects, companyContacts]);
 
             const handleSort = (key) => {
                 setSortConfig(prev => ({
@@ -6449,13 +6468,13 @@
                                                 <p className="text-gray-700 mt-1">
                                                     <span className="text-2xl font-bold text-orange-600">{stats.byContactStatus.overdue}</span>
                                                     <span className="ml-2">
-                                                        {stats.byContactStatus.overdue === 1 ? 'company hasn\'t' : 'companies haven\'t'} been contacted in 5+ days
+                                                        {stats.byContactStatus.overdue === 1 ? 'company has contacts' : 'companies have contacts'} needing attention (5+ days or no outreach)
                                                     </span>
                                                 </p>
                                                 <div className="mt-2 text-sm text-gray-600">
-                                                    <span className="font-semibold text-red-600">{stats.byContactStatus.cold}</span> cold (15+ days) • 
-                                                    <span className="ml-2 font-semibold text-yellow-600">{stats.byContactStatus.stale}</span> stale (6-14 days) • 
-                                                    <span className="ml-2 font-semibold text-gray-600">{stats.byContactStatus.never}</span> never contacted
+                                                    <span className="font-semibold text-red-600">{stats.byContactStatus.cold}</span> with cold contacts (15+ days) • 
+                                                    <span className="ml-2 font-semibold text-yellow-600">{stats.byContactStatus.stale}</span> with stale contacts (6-14 days) • 
+                                                    <span className="ml-2 font-semibold text-gray-600">{stats.byContactStatus.noContacts}</span> no contacts added yet
                                                 </div>
                                             </div>
                                         </div>
@@ -6690,9 +6709,10 @@
                                                             )}
                                                             <div className="mt-1">
                                                                 {(() => {
-                                                                    const contactStatus = getContactStatus(prospect.lastContacted);
+                                                                    const contactStatus = getCompanyContactStatus(prospect.id);
                                                                     return (
                                                                         <span className={`text-xs px-2 py-1 rounded-full ${
+                                                                            contactStatus.status === 'noContacts' ? 'bg-gray-100 text-gray-600' :
                                                                             contactStatus.status === 'never' ? 'bg-gray-100 text-gray-600' :
                                                                             contactStatus.status === 'fresh' ? 'bg-green-50 text-green-700' :
                                                                             contactStatus.status === 'stale' ? 'bg-yellow-50 text-yellow-700' :
@@ -8145,7 +8165,14 @@
                 
                 const newContact = {
                     id: Date.now(),
-                    ...contactForm,
+                    name: contactForm.name,
+                    title: contactForm.title,
+                    email: contactForm.email || '',
+                    phone: contactForm.phone || '',
+                    linkedin: contactForm.linkedin || '',
+                    decisionMakerType: contactForm.decisionMakerType || '',
+                    notes: contactForm.notes || '',
+                    lastContacted: null, // Initialize as not contacted
                     createdAt: new Date().toISOString()
                 };
                 
@@ -8208,6 +8235,12 @@
                 }
             };
 
+            const handleMarkAsContacted = (contactId) => {
+                setLocalContacts(localContacts.map(c =>
+                    c.id === contactId ? { ...c, lastContacted: new Date().toISOString() } : c
+                ));
+            };
+
             const getDecisionMakerColor = (type) => {
                 const colors = {
                     'Decision Maker': 'bg-purple-100 text-purple-800',
@@ -8216,6 +8249,23 @@
                     'Champion': 'bg-green-100 text-green-800'
                 };
                 return colors[type] || 'bg-gray-100 text-gray-600';
+            };
+
+            const getDaysSinceContact = (lastContacted) => {
+                if (!lastContacted) return null;
+                const now = new Date();
+                const last = new Date(lastContacted);
+                const diffTime = Math.abs(now - last);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays;
+            };
+
+            const getContactStatus = (lastContacted) => {
+                const days = getDaysSinceContact(lastContacted);
+                if (days === null) return { status: 'never', color: 'gray', badge: '⭕ Not contacted', alert: true };
+                if (days <= 5) return { status: 'fresh', color: 'green', badge: `${days}d ago 🟢`, alert: false };
+                if (days <= 14) return { status: 'stale', color: 'yellow', badge: `${days}d ago ⚠️`, alert: true };
+                return { status: 'cold', color: 'red', badge: `${days}d ago ❄️`, alert: true };
             };
 
             return (
@@ -8519,12 +8569,26 @@
                                             </div>
                                         ) : (
                                             <div className="space-y-4">
-                                                {localContacts.map((contact) => (
+                                                {localContacts.map((contact) => {
+                                                    const contactStatus = getContactStatus(contact.lastContacted);
+                                                    return (
                                                     <div key={contact.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition bg-white">
                                                         <div className="flex justify-between items-start mb-3">
-                                                            <div>
-                                                                <h4 className="font-semibold text-gray-900">{contact.name}</h4>
-                                                                <p className="text-sm text-gray-600">{contact.title}</p>
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div>
+                                                                        <h4 className="font-semibold text-gray-900">{contact.name}</h4>
+                                                                        <p className="text-sm text-gray-600">{contact.title}</p>
+                                                                    </div>
+                                                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                                                        contactStatus.status === 'never' ? 'bg-gray-100 text-gray-600' :
+                                                                        contactStatus.status === 'fresh' ? 'bg-green-50 text-green-700' :
+                                                                        contactStatus.status === 'stale' ? 'bg-yellow-50 text-yellow-700' :
+                                                                        'bg-red-50 text-red-700'
+                                                                    }`}>
+                                                                        {contactStatus.badge}
+                                                                    </span>
+                                                                </div>
                                                                 {contact.decisionMakerType && (
                                                                     <span className={`mt-2 inline-block text-xs px-2 py-1 rounded-full ${getDecisionMakerColor(contact.decisionMakerType)}`}>
                                                                         {contact.decisionMakerType}
@@ -8546,7 +8610,7 @@
                                                                 </button>
                                                             </div>
                                                         </div>
-                                                        <div className="grid grid-cols-2 gap-2 text-sm">
+                                                        <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                                                             {contact.email && (
                                                                 <div>
                                                                     <span className="text-gray-500">Email:</span>
@@ -8573,12 +8637,19 @@
                                                             )}
                                                         </div>
                                                         {contact.notes && (
-                                                            <div className="mt-3 pt-3 border-t border-gray-100">
+                                                            <div className="mb-3 pb-3 border-b border-gray-100">
                                                                 <p className="text-sm text-gray-600">{contact.notes}</p>
                                                             </div>
                                                         )}
+                                                        <button
+                                                            onClick={() => handleMarkAsContacted(contact.id)}
+                                                            className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold transition-colors"
+                                                        >
+                                                            ✓ Mark as Contacted Today
+                                                        </button>
                                                     </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
