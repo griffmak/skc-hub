@@ -10,6 +10,8 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for Excel import -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -6034,7 +6036,6 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [sellerFilter, setSellerFilter] = useState('all');
             const [statusFilter, setStatusFilter] = useState('all');
-            const [contactStatusFilter, setContactStatusFilter] = useState('all'); // all, overdue, fresh
             const [expandedId, setExpandedId] = useState(null);
             const [editingSellerId, setEditingSellerId] = useState(null);
             const [sortConfig, setSortConfig] = useState({ key: 'companyName', direction: 'asc' });
@@ -6042,14 +6043,14 @@
             
             // Modal states
             const [showAddModal, setShowAddModal] = useState(false);
+            const [showEditModal, setShowEditModal] = useState(false);
+            const [editingCompany, setEditingCompany] = useState(null);
             const [showNotesModal, setShowNotesModal] = useState(false);
             const [selectedCompany, setSelectedCompany] = useState(null);
+            const [showImportModal, setShowImportModal] = useState(false);
+            const [importPreview, setImportPreview] = useState(null);
             const [companyNotes, setCompanyNotes] = useState(() => {
                 const saved = localStorage.getItem('skc_company_notes');
-                return saved ? JSON.parse(saved) : {};
-            });
-            const [companyContacts, setCompanyContacts] = useState(() => {
-                const saved = localStorage.getItem('skc_company_contacts');
                 return saved ? JSON.parse(saved) : {};
             });
 
@@ -6063,10 +6064,6 @@
                 localStorage.setItem('skc_company_notes', JSON.stringify(companyNotes));
             }, [companyNotes]);
 
-            // Save company contacts to localStorage
-            useEffect(() => {
-                localStorage.setItem('skc_company_contacts', JSON.stringify(companyContacts));
-            }, [companyContacts]);
 
             // Add new company
             const handleAddCompany = (formData) => {
@@ -6091,15 +6088,51 @@
             const handleDeleteCompany = (companyId, companyName) => {
                 if (window.confirm(`Are you sure you want to delete ${companyName}? This action cannot be undone.`)) {
                     setProspects(prev => prev.filter(p => p.id !== companyId));
-                    // Also delete associated notes and contacts
                     const updatedNotes = { ...companyNotes };
                     delete updatedNotes[companyId];
                     setCompanyNotes(updatedNotes);
-                    
-                    const updatedContacts = { ...companyContacts };
-                    delete updatedContacts[companyId];
-                    setCompanyContacts(updatedContacts);
                 }
+            };
+
+            // Edit company
+            const handleEditCompany = (formData) => {
+                setProspects(prev => prev.map(p =>
+                    p.id === editingCompany.id ? {
+                        ...p,
+                        companyName: formData.companyName,
+                        seller: formData.seller || 'Unassigned',
+                        status: formData.status || 'Outreach',
+                        hq: formData.hq || '',
+                        employees: parseInt(formData.employees) || 0,
+                        kcEmployees: formData.kcEmployees ? parseInt(formData.kcEmployees) : null,
+                        revenue: formData.revenue ? parseInt(formData.revenue) : 0,
+                        context: formData.context || '',
+                        skcNotes: formData.skcNotes || ''
+                    } : p
+                ));
+                setShowEditModal(false);
+                setEditingCompany(null);
+            };
+
+            // Import companies from Excel data
+            const handleImportCompanies = (companies) => {
+                const maxId = Math.max(...prospects.map(p => p.id), 0);
+                const newCompanies = companies.map((c, idx) => ({
+                    id: maxId + idx + 1,
+                    companyName: c.companyName || '',
+                    originalName: c.companyName || '',
+                    seller: c.seller || 'Unassigned',
+                    status: c.status || 'Outreach',
+                    hq: c.hq || '',
+                    employees: parseInt(c.employees) || 0,
+                    kcEmployees: c.kcEmployees ? parseInt(c.kcEmployees) : null,
+                    revenue: c.revenue ? parseInt(c.revenue) : 0,
+                    context: c.context || '',
+                    skcNotes: c.skcNotes || ''
+                }));
+                setProspects(prev => [...prev, ...newCompanies]);
+                setShowImportModal(false);
+                setImportPreview(null);
             };
 
             // Open notes modal
@@ -6116,59 +6149,6 @@
                 }));
             };
 
-            // Save contacts for a company
-            const saveCompanyContacts = (companyId, contacts) => {
-                setCompanyContacts(prev => ({
-                    ...prev,
-                    [companyId]: contacts
-                }));
-            };
-
-            // Calculate days since last contact for a specific contact
-            const getDaysSinceContact = (lastContacted) => {
-                if (!lastContacted) return null;
-                const now = new Date();
-                const last = new Date(lastContacted);
-                const diffTime = Math.abs(now - last);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return diffDays;
-            };
-
-            // Get contact status for a specific contact
-            const getContactStatus = (lastContacted) => {
-                const days = getDaysSinceContact(lastContacted);
-                if (days === null) return { status: 'never', color: 'gray', badge: '⭕ Not contacted', alert: true };
-                if (days <= 5) return { status: 'fresh', color: 'green', badge: `${days}d ago 🟢`, alert: false };
-                if (days <= 14) return { status: 'stale', color: 'yellow', badge: `${days}d ago ⚠️`, alert: true };
-                return { status: 'cold', color: 'red', badge: `${days}d ago ❄️`, alert: true };
-            };
-
-            // Get the worst contact status for a company (based on all contacts)
-            const getCompanyContactStatus = (companyId) => {
-                const contacts = companyContacts[companyId] || [];
-                
-                // If no contacts, return "no outreach yet"
-                if (contacts.length === 0) {
-                    return { status: 'noContacts', color: 'gray', badge: '⭕ No outreach yet', alert: true };
-                }
-
-                // Find the most overdue contact
-                let worstStatus = { status: 'fresh', days: 0 };
-                
-                contacts.forEach(contact => {
-                    const days = getDaysSinceContact(contact.lastContacted);
-                    if (days === null || days > worstStatus.days) {
-                        worstStatus = { status: getContactStatus(contact.lastContacted).status, days: days || 999 };
-                    }
-                });
-
-                // Return the worst status found
-                if (worstStatus.days === 0) return { status: 'fresh', color: 'green', badge: 'All fresh 🟢', alert: false };
-                if (worstStatus.days <= 5) return { status: 'fresh', color: 'green', badge: `${worstStatus.days}d ago 🟢`, alert: false };
-                if (worstStatus.days <= 14) return { status: 'stale', color: 'yellow', badge: `${worstStatus.days}d ago ⚠️`, alert: true };
-                if (worstStatus.days === 999) return { status: 'never', color: 'gray', badge: '⭕ No outreach yet', alert: true };
-                return { status: 'cold', color: 'red', badge: `${worstStatus.days}d ago ❄️`, alert: true };
-            };
 
             // Update seller for a prospect
             const updateSeller = (prospectId, newSeller) => {
@@ -6187,18 +6167,8 @@
                                         p.skcNotes.toLowerCase().includes(searchTerm.toLowerCase());
                     const matchesSeller = sellerFilter === 'all' || p.seller === sellerFilter;
                     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
-                    
-                    // Contact status filter - based on company's contacts
-                    let matchesContactStatus = true;
-                    if (contactStatusFilter === 'overdue') {
-                        const companyStatus = getCompanyContactStatus(p.id);
-                        matchesContactStatus = companyStatus.alert; // overdue if any contact needs attention
-                    } else if (contactStatusFilter === 'fresh') {
-                        const companyStatus = getCompanyContactStatus(p.id);
-                        matchesContactStatus = !companyStatus.alert && companyStatus.status !== 'noContacts';
-                    }
-                    
-                    return matchesSearch && matchesSeller && matchesStatus && matchesContactStatus;
+
+                    return matchesSearch && matchesSeller && matchesStatus;
                 });
 
                 // Sort
@@ -6224,7 +6194,7 @@
                 });
 
                 return filtered;
-            }, [prospects, searchTerm, sellerFilter, statusFilter, contactStatusFilter, sortConfig, companyContacts]);
+            }, [prospects, searchTerm, sellerFilter, statusFilter, sortConfig]);
 
             // Calculate stats
             const stats = useMemo(() => {
@@ -6243,38 +6213,9 @@
                     'HOLD': prospects.filter(p => p.status === 'HOLD').length,
                     'Declined': prospects.filter(p => p.status === 'Declined').length,
                 };
-                
-                // Contact status tracking - based on contacts, not companies
-                const byContactStatus = {
-                    overdue: prospects.filter(p => getCompanyContactStatus(p.id).alert).length,
-                    fresh: prospects.filter(p => {
-                        const status = getCompanyContactStatus(p.id);
-                        return !status.alert && status.status !== 'noContacts';
-                    }).length,
-                    noContacts: prospects.filter(p => (companyContacts[p.id] || []).length === 0).length
-                };
-                
-                // Calculate stale and cold for detailed breakdown
-                byContactStatus.stale = prospects.filter(p => {
-                    const contacts = companyContacts[p.id] || [];
-                    if (contacts.length === 0) return false;
-                    return contacts.some(c => {
-                        const days = getDaysSinceContact(c.lastContacted);
-                        return days !== null && days > 5 && days <= 14;
-                    });
-                }).length;
-                
-                byContactStatus.cold = prospects.filter(p => {
-                    const contacts = companyContacts[p.id] || [];
-                    if (contacts.length === 0) return false;
-                    return contacts.some(c => {
-                        const days = getDaysSinceContact(c.lastContacted);
-                        return days !== null && days > 14;
-                    });
-                }).length;
-                
-                return { total, bySeller, byStatus, byContactStatus };
-            }, [prospects, companyContacts]);
+
+                return { total, bySeller, byStatus };
+            }, [prospects]);
 
             const handleSort = (key) => {
                 setSortConfig(prev => ({
@@ -6457,37 +6398,6 @@
 
                     {activeTab === 'prospects' && (
                         <div className="max-w-7xl mx-auto px-4 py-8">
-                            {/* Needs Follow-Up Alert */}
-                            {stats.byContactStatus.overdue > 0 && (
-                                <div className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 border-l-4 border-orange-500 rounded-lg shadow-md p-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="text-4xl">⚠️</div>
-                                            <div>
-                                                <h3 className="text-lg font-bold text-gray-900">Needs Follow-Up</h3>
-                                                <p className="text-gray-700 mt-1">
-                                                    <span className="text-2xl font-bold text-orange-600">{stats.byContactStatus.overdue}</span>
-                                                    <span className="ml-2">
-                                                        {stats.byContactStatus.overdue === 1 ? 'company has contacts' : 'companies have contacts'} needing attention (5+ days or no outreach)
-                                                    </span>
-                                                </p>
-                                                <div className="mt-2 text-sm text-gray-600">
-                                                    <span className="font-semibold text-red-600">{stats.byContactStatus.cold}</span> with cold contacts (15+ days) • 
-                                                    <span className="ml-2 font-semibold text-yellow-600">{stats.byContactStatus.stale}</span> with stale contacts (6-14 days) • 
-                                                    <span className="ml-2 font-semibold text-gray-600">{stats.byContactStatus.noContacts}</span> no contacts added yet
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => setContactStatusFilter('overdue')}
-                                            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold shadow-lg hover:shadow-xl transition-all"
-                                        >
-                                            View All →
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
                             {/* Dashboard Stats */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                                 <div className="bg-white rounded-lg shadow p-6">
@@ -6551,13 +6461,21 @@
                             <div className="bg-white rounded-lg shadow mb-6 p-4">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-semibold text-gray-900">Company Database</h2>
-                                    <button
-                                        onClick={() => setShowAddModal(true)}
-                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold flex items-center gap-2"
-                                    >
-                                        <span className="text-lg">+</span>
-                                        Add Company
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setShowImportModal(true)}
+                                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2"
+                                        >
+                                            Import Excel
+                                        </button>
+                                        <button
+                                            onClick={() => setShowAddModal(true)}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold flex items-center gap-2"
+                                        >
+                                            <span className="text-lg">+</span>
+                                            Add Company
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="md:col-span-1">
@@ -6598,40 +6516,6 @@
                                             <option value="Declined">Declined</option>
                                         </select>
                                     </div>
-                                </div>
-                                
-                                {/* Quick Filter Buttons */}
-                                <div className="mt-4 flex flex-wrap gap-2">
-                                    <button
-                                        onClick={() => setContactStatusFilter('all')}
-                                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                                            contactStatusFilter === 'all'
-                                                ? 'bg-blue-600 text-white shadow-md'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                    >
-                                        All: {stats.total}
-                                    </button>
-                                    <button
-                                        onClick={() => setContactStatusFilter('overdue')}
-                                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                                            contactStatusFilter === 'overdue'
-                                                ? 'bg-orange-600 text-white shadow-md'
-                                                : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
-                                        }`}
-                                    >
-                                        ⚠️ Needs Follow-up: {stats.byContactStatus.overdue}
-                                    </button>
-                                    <button
-                                        onClick={() => setContactStatusFilter('fresh')}
-                                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                                            contactStatusFilter === 'fresh'
-                                                ? 'bg-green-600 text-white shadow-md'
-                                                : 'bg-green-50 text-green-700 hover:bg-green-100'
-                                        }`}
-                                    >
-                                        🟢 Fresh: {stats.byContactStatus.fresh}
-                                    </button>
                                 </div>
                                 
                                 <div className="mt-3 text-sm text-gray-500">
@@ -6702,27 +6586,6 @@
                                                                     {companyNotes[prospect.id].length} {companyNotes[prospect.id].length === 1 ? 'note' : 'notes'}
                                                                 </span>
                                                             )}
-                                                            {companyContacts[prospect.id] && companyContacts[prospect.id].length > 0 && (
-                                                                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                                                                    {companyContacts[prospect.id].length} {companyContacts[prospect.id].length === 1 ? 'contact' : 'contacts'}
-                                                                </span>
-                                                            )}
-                                                            <div className="mt-1">
-                                                                {(() => {
-                                                                    const contactStatus = getCompanyContactStatus(prospect.id);
-                                                                    return (
-                                                                        <span className={`text-xs px-2 py-1 rounded-full ${
-                                                                            contactStatus.status === 'noContacts' ? 'bg-gray-100 text-gray-600' :
-                                                                            contactStatus.status === 'never' ? 'bg-gray-100 text-gray-600' :
-                                                                            contactStatus.status === 'fresh' ? 'bg-green-50 text-green-700' :
-                                                                            contactStatus.status === 'stale' ? 'bg-yellow-50 text-yellow-700' :
-                                                                            'bg-red-50 text-red-700'
-                                                                        }`}>
-                                                                            {contactStatus.badge}
-                                                                        </span>
-                                                                    );
-                                                                })()}
-                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <SellerEditor prospect={prospect} />
@@ -6750,6 +6613,12 @@
                                                                 className="text-blue-600 hover:text-blue-800 font-medium"
                                                             >
                                                                 {expandedId === prospect.id ? 'Hide' : 'Details'}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { setEditingCompany(prospect); setShowEditModal(true); }}
+                                                                className="text-green-600 hover:text-green-800 font-medium"
+                                                            >
+                                                                Edit
                                                             </button>
                                                             <button
                                                                 onClick={() => openNotesModal(prospect)}
@@ -8080,44 +7949,377 @@
 
                     {/* Company Notes Modal */}
                     {showNotesModal && selectedCompany && (
-                        <CompanyNotesModal 
+                        <CompanyNotesModal
                             company={selectedCompany}
                             notes={companyNotes[selectedCompany.id] || []}
-                            contacts={companyContacts[selectedCompany.id] || []}
                             onClose={() => {
                                 setShowNotesModal(false);
                                 setSelectedCompany(null);
                             }}
                             onSaveNotes={saveCompanyNotes}
-                            onSaveContacts={saveCompanyContacts}
                         />
+                    )}
+
+                    {/* Edit Company Modal */}
+                    {showEditModal && editingCompany && (
+                        <div className="modal-overlay" onClick={() => { setShowEditModal(false); setEditingCompany(null); }}>
+                            <div className="modal-content" style={{width: '600px', maxWidth: '90%'}} onClick={(e) => e.stopPropagation()}>
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-2xl font-bold text-gray-900">Edit Company</h2>
+                                        <button
+                                            onClick={() => { setShowEditModal(false); setEditingCompany(null); }}
+                                            className="text-gray-400 hover:text-gray-600 text-2xl"
+                                        >
+                                            x
+                                        </button>
+                                    </div>
+
+                                    <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const formData = new FormData(e.target);
+                                        handleEditCompany({
+                                            companyName: formData.get('companyName'),
+                                            employees: formData.get('employees'),
+                                            revenue: formData.get('revenue'),
+                                            hq: formData.get('hq'),
+                                            kcEmployees: formData.get('kcEmployees'),
+                                            seller: formData.get('seller'),
+                                            status: formData.get('status'),
+                                            context: formData.get('context'),
+                                            skcNotes: formData.get('skcNotes')
+                                        });
+                                    }}>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Company Name <span className="text-red-600">*</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="companyName"
+                                                    required
+                                                    defaultValue={editingCompany.companyName}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Number of Employees
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="employees"
+                                                    defaultValue={editingCompany.employees || ''}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Annual Revenue
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="revenue"
+                                                    defaultValue={editingCompany.revenue || ''}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">Enter in dollars (e.g., 50000000 for $50M)</p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Headquarters</label>
+                                                <input
+                                                    type="text"
+                                                    name="hq"
+                                                    defaultValue={editingCompany.hq || ''}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">KC Employees</label>
+                                                <input
+                                                    type="number"
+                                                    name="kcEmployees"
+                                                    defaultValue={editingCompany.kcEmployees || ''}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Seller</label>
+                                                    <select
+                                                        name="seller"
+                                                        defaultValue={editingCompany.seller || 'Unassigned'}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    >
+                                                        <option value="Unassigned">Unassigned</option>
+                                                        <option value="MG">MG</option>
+                                                        <option value="AD">AD</option>
+                                                        <option value="SL">SL</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                                    <select
+                                                        name="status"
+                                                        defaultValue={editingCompany.status || 'Outreach'}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    >
+                                                        <option value="Outreach">Outreach</option>
+                                                        <option value="Intro Discussion">Intro Discussion</option>
+                                                        <option value="Deck/Frameworks">Deck/Frameworks</option>
+                                                        <option value="Contract Negotiations">Contract Negotiations</option>
+                                                        <option value="HOLD">HOLD</option>
+                                                        <option value="Declined">Declined</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Company Context</label>
+                                                <textarea
+                                                    name="context"
+                                                    defaultValue={editingCompany.context || ''}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    rows="3"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">SKC Notes</label>
+                                                <textarea
+                                                    name="skcNotes"
+                                                    defaultValue={editingCompany.skcNotes || ''}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    rows="2"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setShowEditModal(false); setEditingCompany(null); }}
+                                                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+                                            >
+                                                Save Changes
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Import Excel Modal */}
+                    {showImportModal && (
+                        <div className="modal-overlay" onClick={() => { setShowImportModal(false); setImportPreview(null); }}>
+                            <div className="modal-content" style={{width: '800px', maxWidth: '95%'}} onClick={(e) => e.stopPropagation()}>
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-2xl font-bold text-gray-900">Import Companies from Excel</h2>
+                                        <button
+                                            onClick={() => { setShowImportModal(false); setImportPreview(null); }}
+                                            className="text-gray-400 hover:text-gray-600 text-2xl"
+                                        >
+                                            x
+                                        </button>
+                                    </div>
+
+                                    {!importPreview ? (
+                                        <div>
+                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                                                <div className="text-4xl mb-4">📊</div>
+                                                <p className="text-gray-600 mb-4">Upload an Excel (.xlsx, .xls) or CSV file</p>
+                                                <input
+                                                    type="file"
+                                                    accept=".xlsx,.xls,.csv"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files[0];
+                                                        if (!file) return;
+                                                        const reader = new FileReader();
+                                                        reader.onload = (evt) => {
+                                                            try {
+                                                                const data = new Uint8Array(evt.target.result);
+                                                                const workbook = XLSX.read(data, { type: 'array' });
+                                                                const sheetName = workbook.SheetNames[0];
+                                                                const worksheet = workbook.Sheets[sheetName];
+                                                                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                                                                if (jsonData.length === 0) {
+                                                                    alert('No data found in the file.');
+                                                                    return;
+                                                                }
+
+                                                                const headers = Object.keys(jsonData[0]);
+                                                                setImportPreview({ rows: jsonData, headers: headers, mapping: {
+                                                                    companyName: headers.find(h => /company|name|business/i.test(h)) || headers[0] || '',
+                                                                    hq: headers.find(h => /hq|headquarters|location|city/i.test(h)) || '',
+                                                                    employees: headers.find(h => /employee|headcount|staff/i.test(h)) || '',
+                                                                    kcEmployees: headers.find(h => /kc.*employee|kansas.*city.*employee/i.test(h)) || '',
+                                                                    revenue: headers.find(h => /revenue|sales|income/i.test(h)) || '',
+                                                                    seller: headers.find(h => /seller|assigned|owner|rep/i.test(h)) || '',
+                                                                    status: headers.find(h => /status|stage|phase/i.test(h)) || '',
+                                                                    context: headers.find(h => /context|description|notes|info/i.test(h)) || '',
+                                                                    skcNotes: headers.find(h => /skc.*note|internal.*note/i.test(h)) || ''
+                                                                }});
+                                                            } catch (err) {
+                                                                alert('Error reading file: ' + err.message);
+                                                            }
+                                                        };
+                                                        reader.readAsArrayBuffer(file);
+                                                    }}
+                                                    className="mx-auto"
+                                                />
+                                            </div>
+                                            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                                                <h3 className="font-semibold text-gray-900 mb-2">Expected Columns</h3>
+                                                <p className="text-sm text-gray-600">Your file should have columns for: Company Name, Headquarters, Employees, KC Employees, Revenue, Seller, Status, Context, SKC Notes</p>
+                                                <p className="text-xs text-gray-500 mt-2">Column names will be auto-matched. You can adjust the mapping after upload.</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                                <p className="font-semibold text-green-800">Found {importPreview.rows.length} companies to import</p>
+                                            </div>
+
+                                            <h3 className="font-semibold text-gray-900 mb-3">Map Columns</h3>
+                                            <div className="grid grid-cols-2 gap-3 mb-6">
+                                                {[
+                                                    { key: 'companyName', label: 'Company Name *' },
+                                                    { key: 'hq', label: 'Headquarters' },
+                                                    { key: 'employees', label: 'Employees' },
+                                                    { key: 'kcEmployees', label: 'KC Employees' },
+                                                    { key: 'revenue', label: 'Revenue' },
+                                                    { key: 'seller', label: 'Seller' },
+                                                    { key: 'status', label: 'Status' },
+                                                    { key: 'context', label: 'Context' },
+                                                    { key: 'skcNotes', label: 'SKC Notes' }
+                                                ].map(field => (
+                                                    <div key={field.key} className="flex items-center gap-2">
+                                                        <label className="text-sm font-medium text-gray-700 w-32">{field.label}:</label>
+                                                        <select
+                                                            value={importPreview.mapping[field.key]}
+                                                            onChange={(e) => setImportPreview(prev => ({
+                                                                ...prev,
+                                                                mapping: { ...prev.mapping, [field.key]: e.target.value }
+                                                            }))}
+                                                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                        >
+                                                            <option value="">-- Skip --</option>
+                                                            {importPreview.headers.map(h => (
+                                                                <option key={h} value={h}>{h}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <h3 className="font-semibold text-gray-900 mb-2">Preview (first 5 rows)</h3>
+                                            <div className="overflow-x-auto border rounded-lg mb-4">
+                                                <table className="min-w-full text-xs">
+                                                    <thead className="bg-gray-50">
+                                                        <tr>
+                                                            <th className="px-3 py-2 text-left">Company Name</th>
+                                                            <th className="px-3 py-2 text-left">HQ</th>
+                                                            <th className="px-3 py-2 text-left">Employees</th>
+                                                            <th className="px-3 py-2 text-left">Revenue</th>
+                                                            <th className="px-3 py-2 text-left">Seller</th>
+                                                            <th className="px-3 py-2 text-left">Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {importPreview.rows.slice(0, 5).map((row, i) => (
+                                                            <tr key={i} className="border-t">
+                                                                <td className="px-3 py-2">{importPreview.mapping.companyName ? row[importPreview.mapping.companyName] : '-'}</td>
+                                                                <td className="px-3 py-2">{importPreview.mapping.hq ? row[importPreview.mapping.hq] : '-'}</td>
+                                                                <td className="px-3 py-2">{importPreview.mapping.employees ? row[importPreview.mapping.employees] : '-'}</td>
+                                                                <td className="px-3 py-2">{importPreview.mapping.revenue ? row[importPreview.mapping.revenue] : '-'}</td>
+                                                                <td className="px-3 py-2">{importPreview.mapping.seller ? row[importPreview.mapping.seller] : '-'}</td>
+                                                                <td className="px-3 py-2">{importPreview.mapping.status ? row[importPreview.mapping.status] : '-'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div className="flex justify-end gap-2 pt-4 border-t">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setImportPreview(null)}
+                                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Back
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setShowImportModal(false); setImportPreview(null); }}
+                                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (!importPreview.mapping.companyName) {
+                                                            alert('Please map the Company Name column.');
+                                                            return;
+                                                        }
+                                                        const mapped = importPreview.rows.map(row => {
+                                                            const m = importPreview.mapping;
+                                                            return {
+                                                                companyName: m.companyName ? String(row[m.companyName] || '') : '',
+                                                                hq: m.hq ? String(row[m.hq] || '') : '',
+                                                                employees: m.employees ? row[m.employees] : 0,
+                                                                kcEmployees: m.kcEmployees ? row[m.kcEmployees] : null,
+                                                                revenue: m.revenue ? row[m.revenue] : 0,
+                                                                seller: m.seller ? String(row[m.seller] || '') : 'Unassigned',
+                                                                status: m.status ? String(row[m.status] || '') : 'Outreach',
+                                                                context: m.context ? String(row[m.context] || '') : '',
+                                                                skcNotes: m.skcNotes ? String(row[m.skcNotes] || '') : ''
+                                                            };
+                                                        }).filter(c => c.companyName.trim());
+                                                        handleImportCompanies(mapped);
+                                                    }}
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+                                                >
+                                                    Import {importPreview.rows.length} Companies
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             );
         }
 
-        // Company Notes Modal Component
-        function CompanyNotesModal({ company, notes, contacts, onClose, onSaveNotes, onSaveContacts }) {
+        // Company Notes Modal Component - auto-saves notes immediately
+        function CompanyNotesModal({ company, notes, onClose, onSaveNotes }) {
             const [localNotes, setLocalNotes] = React.useState(notes);
-            const [localContacts, setLocalContacts] = React.useState(contacts);
             const [newNote, setNewNote] = React.useState('');
             const [editingNoteId, setEditingNoteId] = React.useState(null);
             const [editText, setEditText] = React.useState('');
-            const [activeTab, setActiveTab] = React.useState('notes');
-            
-            // Contact form state
-            const [showContactForm, setShowContactForm] = React.useState(false);
-            const [editingContactId, setEditingContactId] = React.useState(null);
-            const [contactForm, setContactForm] = React.useState({
-                name: '',
-                title: '',
-                email: '',
-                phone: '',
-                linkedin: '',
-                decisionMakerType: '',
-                lastContacted: '',
-                notes: ''
-            });
+
+            // Auto-save whenever localNotes changes
+            React.useEffect(() => {
+                onSaveNotes(company.id, localNotes);
+            }, [localNotes]);
+
             const handleAddNote = () => {
                 if (newNote.trim()) {
                     const note = {
@@ -8150,124 +8352,6 @@
                 setEditText('');
             };
 
-            const handleSave = () => {
-                onSaveNotes(company.id, localNotes);
-                onSaveContacts(company.id, localContacts);
-                onClose();
-            };
-
-            // Contact management functions
-            const handleAddContact = () => {
-                if (!contactForm.name || !contactForm.title) {
-                    alert('Name and Title are required');
-                    return;
-                }
-                
-                const newContact = {
-                    id: Date.now(),
-                    name: contactForm.name,
-                    title: contactForm.title,
-                    email: contactForm.email || '',
-                    phone: contactForm.phone || '',
-                    linkedin: contactForm.linkedin || '',
-                    decisionMakerType: contactForm.decisionMakerType || '',
-                    notes: contactForm.notes || '',
-                    lastContacted: null, // Initialize as not contacted
-                    createdAt: new Date().toISOString()
-                };
-                
-                setLocalContacts([...localContacts, newContact]);
-                setContactForm({
-                    name: '',
-                    title: '',
-                    email: '',
-                    phone: '',
-                    linkedin: '',
-                    decisionMakerType: '',
-                    lastContacted: '',
-                    notes: ''
-                });
-                setShowContactForm(false);
-            };
-
-            const handleEditContact = (contact) => {
-                setEditingContactId(contact.id);
-                setContactForm({
-                    name: contact.name,
-                    title: contact.title,
-                    email: contact.email || '',
-                    phone: contact.phone || '',
-                    linkedin: contact.linkedin || '',
-                    decisionMakerType: contact.decisionMakerType || '',
-                    lastContacted: contact.lastContacted || '',
-                    notes: contact.notes || ''
-                });
-                setShowContactForm(true);
-            };
-
-            const handleUpdateContact = () => {
-                if (!contactForm.name || !contactForm.title) {
-                    alert('Name and Title are required');
-                    return;
-                }
-                
-                setLocalContacts(localContacts.map(c =>
-                    c.id === editingContactId ? { ...c, ...contactForm } : c
-                ));
-                
-                setContactForm({
-                    name: '',
-                    title: '',
-                    email: '',
-                    phone: '',
-                    linkedin: '',
-                    decisionMakerType: '',
-                    lastContacted: '',
-                    notes: ''
-                });
-                setEditingContactId(null);
-                setShowContactForm(false);
-            };
-
-            const handleDeleteContact = (contactId) => {
-                if (confirm('Delete this contact?')) {
-                    setLocalContacts(localContacts.filter(c => c.id !== contactId));
-                }
-            };
-
-            const handleMarkAsContacted = (contactId) => {
-                setLocalContacts(localContacts.map(c =>
-                    c.id === contactId ? { ...c, lastContacted: new Date().toISOString() } : c
-                ));
-            };
-
-            const getDecisionMakerColor = (type) => {
-                const colors = {
-                    'Decision Maker': 'bg-purple-100 text-purple-800',
-                    'Influencer': 'bg-blue-100 text-blue-800',
-                    'Gatekeeper': 'bg-yellow-100 text-yellow-800',
-                    'Champion': 'bg-green-100 text-green-800'
-                };
-                return colors[type] || 'bg-gray-100 text-gray-600';
-            };
-
-            const getDaysSinceContact = (lastContacted) => {
-                if (!lastContacted) return null;
-                const now = new Date();
-                const last = new Date(lastContacted);
-                const diffTime = Math.abs(now - last);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return diffDays;
-            };
-
-            const getContactStatus = (lastContacted) => {
-                const days = getDaysSinceContact(lastContacted);
-                if (days === null) return { status: 'never', color: 'gray', badge: '⭕ Not contacted', alert: true };
-                if (days <= 5) return { status: 'fresh', color: 'green', badge: `${days}d ago 🟢`, alert: false };
-                if (days <= 14) return { status: 'stale', color: 'yellow', badge: `${days}d ago ⚠️`, alert: true };
-                return { status: 'cold', color: 'red', badge: `${days}d ago ❄️`, alert: true };
-            };
-
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal-content" style={{width: '800px', maxWidth: '90%'}} onClick={(e) => e.stopPropagation()}>
@@ -8275,13 +8359,13 @@
                             <div className="flex items-start justify-between mb-6">
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-900">{company.companyName}</h2>
-                                    <p className="text-sm text-gray-500 mt-1">Company History & Notes</p>
+                                    <p className="text-sm text-gray-500 mt-1">Company Notes</p>
                                 </div>
                                 <button
                                     onClick={onClose}
                                     className="text-gray-400 hover:text-gray-600 text-2xl"
                                 >
-                                    ×
+                                    x
                                 </button>
                             </div>
 
@@ -8295,7 +8379,7 @@
                                     <div>
                                         <span className="text-gray-500">Revenue:</span>
                                         <span className="ml-2 font-medium">
-                                            {company.revenue >= 1000000000 
+                                            {company.revenue >= 1000000000
                                                 ? `$${(company.revenue / 1000000000).toFixed(1)}B`
                                                 : company.revenue >= 1000000
                                                 ? `$${(company.revenue / 1000000).toFixed(1)}M`
@@ -8311,62 +8395,33 @@
                                 </div>
                             </div>
 
-                            {/* Tabs */}
-                            <div className="border-b border-gray-200 mb-6">
-                                <div className="flex space-x-8">
+                            {/* Add Note Section */}
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Add New Note</label>
+                                <textarea
+                                    value={newNote}
+                                    onChange={(e) => setNewNote(e.target.value)}
+                                    rows="3"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter note about conversation, meeting, or update..."
+                                />
+                                <div className="flex justify-end mt-2">
                                     <button
-                                        onClick={() => setActiveTab('notes')}
-                                        className={`py-3 px-1 border-b-2 font-medium text-sm ${
-                                            activeTab === 'notes'
-                                                ? 'border-blue-600 text-blue-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
+                                        onClick={handleAddNote}
+                                        disabled={!newNote.trim()}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                                     >
-                                        📝 Notes ({localNotes.length})
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('contacts')}
-                                        className={`py-3 px-1 border-b-2 font-medium text-sm ${
-                                            activeTab === 'contacts'
-                                                ? 'border-blue-600 text-blue-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        👥 Contacts ({localContacts.length})
+                                        Add Note
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Notes Tab Content */}
-                            {activeTab === 'notes' && (
-                                <>
-                                    {/* Add Note Section */}
-                                    <div className="mb-6">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Add New Note</label>
-                                        <textarea
-                                            value={newNote}
-                                            onChange={(e) => setNewNote(e.target.value)}
-                                            rows="3"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Enter note about conversation, meeting, or update..."
-                                        />
-                                        <div className="flex justify-end mt-2">
-                                            <button
-                                                onClick={handleAddNote}
-                                                disabled={!newNote.trim()}
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                            >
-                                                Add Note
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Notes History */}
-                                    <div>
+                            {/* Notes History */}
+                            <div>
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
                                     History ({localNotes.length} {localNotes.length === 1 ? 'note' : 'notes'})
                                 </h3>
-                                
+
                                 {localNotes.length === 0 ? (
                                     <div className="text-center py-8 text-gray-500">
                                         <div className="text-4xl mb-2">📝</div>
@@ -8431,244 +8486,15 @@
                                     </div>
                                 )}
                             </div>
-                                </>
-                            )}
 
-                            {/* Contacts Tab Content */}
-                            {activeTab === 'contacts' && (
-                                <div>
-                                    {/* Add/Edit Contact Form */}
-                                    {showContactForm ? (
-                                        <div className="mb-6 p-4 border border-blue-200 bg-blue-50 rounded-lg">
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                                {editingContactId ? 'Edit Contact' : 'Add New Contact'}
-                                            </h3>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Name <span className="text-red-600">*</span>
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={contactForm.name}
-                                                        onChange={(e) => setContactForm({...contactForm, name: e.target.value})}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="John Smith"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Title <span className="text-red-600">*</span>
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={contactForm.title}
-                                                        onChange={(e) => setContactForm({...contactForm, title: e.target.value})}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="VP of Marketing"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                                    <input
-                                                        type="email"
-                                                        value={contactForm.email}
-                                                        onChange={(e) => setContactForm({...contactForm, email: e.target.value})}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="john@company.com"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                                    <input
-                                                        type="tel"
-                                                        value={contactForm.phone}
-                                                        onChange={(e) => setContactForm({...contactForm, phone: e.target.value})}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="(555) 123-4567"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn</label>
-                                                    <input
-                                                        type="url"
-                                                        value={contactForm.linkedin}
-                                                        onChange={(e) => setContactForm({...contactForm, linkedin: e.target.value})}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="linkedin.com/in/..."
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Role Type</label>
-                                                    <select
-                                                        value={contactForm.decisionMakerType}
-                                                        onChange={(e) => setContactForm({...contactForm, decisionMakerType: e.target.value})}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                    >
-                                                        <option value="">Select role...</option>
-                                                        <option value="Decision Maker">Decision Maker</option>
-                                                        <option value="Influencer">Influencer</option>
-                                                        <option value="Gatekeeper">Gatekeeper</option>
-                                                        <option value="Champion">Champion</option>
-                                                    </select>
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                                    <textarea
-                                                        value={contactForm.notes}
-                                                        onChange={(e) => setContactForm({...contactForm, notes: e.target.value})}
-                                                        rows="2"
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="Any relevant details about this contact..."
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-end gap-2 mt-4">
-                                                <button
-                                                    onClick={() => {
-                                                        setShowContactForm(false);
-                                                        setEditingContactId(null);
-                                                        setContactForm({
-                                                            name: '', title: '', email: '', phone: '', linkedin: '',
-                                                            decisionMakerType: '', lastContacted: '', notes: ''
-                                                        });
-                                                    }}
-                                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    onClick={editingContactId ? handleUpdateContact : handleAddContact}
-                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                                >
-                                                    {editingContactId ? 'Update Contact' : 'Add Contact'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="mb-6">
-                                            <button
-                                                onClick={() => setShowContactForm(true)}
-                                                className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-all"
-                                            >
-                                                + Add New Contact
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Contacts List */}
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                                            Contacts ({localContacts.length})
-                                        </h3>
-                                        
-                                        {localContacts.length === 0 ? (
-                                            <div className="text-center py-8 text-gray-500">
-                                                <div className="text-4xl mb-2">👥</div>
-                                                <div className="text-sm">No contacts yet. Add your first contact above.</div>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                {localContacts.map((contact) => {
-                                                    const contactStatus = getContactStatus(contact.lastContacted);
-                                                    return (
-                                                    <div key={contact.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition bg-white">
-                                                        <div className="flex justify-between items-start mb-3">
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div>
-                                                                        <h4 className="font-semibold text-gray-900">{contact.name}</h4>
-                                                                        <p className="text-sm text-gray-600">{contact.title}</p>
-                                                                    </div>
-                                                                    <span className={`text-xs px-2 py-1 rounded-full ${
-                                                                        contactStatus.status === 'never' ? 'bg-gray-100 text-gray-600' :
-                                                                        contactStatus.status === 'fresh' ? 'bg-green-50 text-green-700' :
-                                                                        contactStatus.status === 'stale' ? 'bg-yellow-50 text-yellow-700' :
-                                                                        'bg-red-50 text-red-700'
-                                                                    }`}>
-                                                                        {contactStatus.badge}
-                                                                    </span>
-                                                                </div>
-                                                                {contact.decisionMakerType && (
-                                                                    <span className={`mt-2 inline-block text-xs px-2 py-1 rounded-full ${getDecisionMakerColor(contact.decisionMakerType)}`}>
-                                                                        {contact.decisionMakerType}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex space-x-2">
-                                                                <button
-                                                                    onClick={() => handleEditContact(contact)}
-                                                                    className="text-xs text-blue-600 hover:text-blue-800"
-                                                                >
-                                                                    Edit
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteContact(contact.id)}
-                                                                    className="text-xs text-red-600 hover:text-red-800"
-                                                                >
-                                                                    Delete
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                                                            {contact.email && (
-                                                                <div>
-                                                                    <span className="text-gray-500">Email:</span>
-                                                                    <a href={`mailto:${contact.email}`} className="ml-2 text-blue-600 hover:underline">
-                                                                        {contact.email}
-                                                                    </a>
-                                                                </div>
-                                                            )}
-                                                            {contact.phone && (
-                                                                <div>
-                                                                    <span className="text-gray-500">Phone:</span>
-                                                                    <a href={`tel:${contact.phone}`} className="ml-2 text-blue-600 hover:underline">
-                                                                        {contact.phone}
-                                                                    </a>
-                                                                </div>
-                                                            )}
-                                                            {contact.linkedin && (
-                                                                <div className="col-span-2">
-                                                                    <span className="text-gray-500">LinkedIn:</span>
-                                                                    <a href={contact.linkedin} target="_blank" rel="noopener noreferrer" className="ml-2 text-blue-600 hover:underline">
-                                                                        View Profile →
-                                                                    </a>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        {contact.notes && (
-                                                            <div className="mb-3 pb-3 border-b border-gray-100">
-                                                                <p className="text-sm text-gray-600">{contact.notes}</p>
-                                                            </div>
-                                                        )}
-                                                        <button
-                                                            onClick={() => handleMarkAsContacted(contact.id)}
-                                                            className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold transition-colors"
-                                                        >
-                                                            ✓ Mark as Contacted Today
-                                                        </button>
-                                                    </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Footer Actions */}
-                            <div className="flex justify-end gap-2 pt-4 border-t mt-6">
+                            {/* Footer */}
+                            <div className="flex justify-end pt-4 border-t mt-6">
+                                <p className="text-xs text-gray-400 mr-auto mt-2">Notes are saved automatically</p>
                                 <button
                                     onClick={onClose}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSave}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
                                 >
-                                    Save Changes
+                                    Done
                                 </button>
                             </div>
                         </div>
