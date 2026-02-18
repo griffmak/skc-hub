@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>From Bullpen to Bull Market — Griffin Maklansky × moomoo</title>
+  <meta name="description" content="A 2026 season campaign playbook for moomoo's New York Mets partnership. By Griffin Maklansky." />
+  <meta property="og:title" content="From Bullpen to Bull Market — Griffin Maklansky" />
+  <meta property="og:description" content="A campaign playbook for converting 3 million annual Citi Field visitors into moomoo's next generation of investors." />
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'mets-navy':   '#002D72',
+            'mets-blue':   '#0072CE',
+            'moo-orange':  '#FF6B35',
+          },
+          keyframes: {
+            fadeUp: {
+              '0%':   { opacity: '0', transform: 'translateY(28px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            fadeIn: {
+              '0%':   { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            pulse2: {
+              '0%, 100%': { opacity: '1' },
+              '50%':       { opacity: '.5' },
+            },
+          },
+          animation: {
+            'fade-up':  'fadeUp 0.7s ease-out forwards',
+            'fade-in':  'fadeIn 0.6s ease-out forwards',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; }
+
+    /* Scroll-reveal utility */
+    .reveal       { opacity: 0; transform: translateY(26px); transition: opacity 0.65s ease, transform 0.65s ease; }
+    .reveal.show  { opacity: 1; transform: translateY(0); }
+    .reveal-fast       { opacity: 0; transform: translateY(14px); transition: opacity 0.4s ease, transform 0.4s ease; }
+    .reveal-fast.show  { opacity: 1; transform: translateY(0); }
+
+    /* Orange gradient text */
+    .text-gradient {
+      background: linear-gradient(120deg, #FF6B35, #ff9b6a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Blue text gradient */
+    .text-gradient-blue {
+      background: linear-gradient(120deg, #0072CE, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Stat counter card pulse ring */
+    .stat-ring {
+      box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.4);
+      animation: ring-pulse 2s infinite;
+    }
+    @keyframes ring-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255,107,53,0.35); }
+      70%  { box-shadow: 0 0 0 12px rgba(255,107,53,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,107,53,0); }
+    }
+
+    /* Campaign card hover */
+    .campaign-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .campaign-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,45,114,0.12); }
+
+    /* Pillar card */
+    .pillar-card { transition: transform 0.2s ease, border-color 0.2s ease; }
+    .pillar-card:hover { transform: translateY(-3px); }
+
+    /* Scrollbar (webkit) */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #002D72; border-radius: 3px; }
+
+    /* Mobile nav transition */
+    .mobile-nav-enter { animation: fadeIn 0.2s ease-out forwards; }
+
+    /* Timeline connector */
+    .timeline-dot {
+      width: 12px; height: 12px;
+      background: #FF6B35;
+      border-radius: 50%;
+      border: 2px solid white;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    /* ─────────────────────────────────────────
+       HOOKS
+    ───────────────────────────────────────── */
+
+    function useInView(threshold = 0.12) {
+      const ref = useRef(null);
+      const [inView, setInView] = useState(false);
+      useEffect(() => {
+        const obs = new IntersectionObserver(
+          ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect(); } },
+          { threshold }
+        );
+        if (ref.current) obs.observe(ref.current);
+        return () => obs.disconnect();
+      }, [threshold]);
+      return [ref, inView];
+    }
+
+    function useCountUp(target, duration, started) {
+      const [val, setVal] = useState(0);
+      useEffect(() => {
+        if (!started) return;
+        let start = null;
+        function step(ts) {
+          if (!start) start = ts;
+          const p = Math.min((ts - start) / duration, 1);
+          const ease = 1 - Math.pow(1 - p, 3);
+          setVal(Math.round(ease * target));
+          if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }, [started, target, duration]);
+      return val;
+    }
+
+    /* ─────────────────────────────────────────
+       DATA
+    ───────────────────────────────────────── */
+
+    const STATS = [
+      { raw: 38603,  display: n => n.toLocaleString(), suffix: '',  label: 'avg Citi Field attendance per game',       color: 'text-moo-orange' },
+      { raw: 56397,  display: n => '$' + n.toLocaleString(), suffix: '',  label: 'avg Mets fan household income',      color: 'text-mets-blue' },
+      { raw: 3,      display: n => n,  suffix: 'M+', label: 'annual fan touchpoints across 80 home games', color: 'text-moo-orange' },
+      { raw: 25,     display: n => n,  suffix: 'M+', label: 'moomoo global users — the Mets deal is the NYC growth engine', color: 'text-mets-blue' },
+    ];
+
+    const PILLARS = [
+      {
+        icon: '⚾',
+        number: '01',
+        name: 'Swing Trade',
+        tag: 'Digital & Social',
+        color: 'border-moo-orange',
+        bg: 'bg-orange-50',
+        tagColor: 'bg-moo-orange/10 text-orange-700',
+        desc: 'Turn baseball stats into investing education. Create content that bridges the two worlds — making moomoo feel native to the Mets conversation every game day.',
+      },
+      {
+        icon: '🏟️',
+        number: '02',
+        name: 'Close the Deal',
+        tag: 'Citi Field Activations',
+        color: 'border-mets-blue',
+        bg: 'bg-blue-50',
+        tagColor: 'bg-mets-blue/10 text-blue-700',
+        desc: 'Upgrade the in-stadium moomoo presence from passive signage to active conversion — interactive touchpoints that give fans a reason to open the app before they leave the park.',
+      },
+      {
+        icon: '📈',
+        number: '03',
+        name: 'The Mets Portfolio',
+        tag: 'Community & Influencer',
+        color: 'border-green-500',
+        bg: 'bg-green-50',
+        tagColor: 'bg-green-100 text-green-700',
+        desc: 'Build a community of "fan-investors" through an influencer-driven content series that rewards both fandom and financial engagement across the full 162-game season.',
+      },
+    ];
+
+    const CAMPAIGN_CALENDAR = [
+      { day: 'Monday', platform: 'Instagram / TikTok', content: '"Mets Monday Market Update" — last week\'s Mets stats mapped to market moves' },
+      { day: 'Wednesday', platform: 'X / Twitter', content: 'Quick-hit stat comparison: "Diaz: 91% save rate. Top moomoo traders: X% win rate."' },
+      { day: 'Friday', platform: 'YouTube Shorts', content: '"Pre-game Playbook" — 60-sec investing tip themed around that night\'s matchup' },
+      { day: 'Game Day', platform: 'Instagram Stories', content: 'Live interactive poll: "Who wins tonight — the Mets or your stocks?"' },
+    ];
+
+    const INFLUENCER_TIERS = [
+      { tier: 'Tier 1', size: 'Macro 500k+', type: 'Finance & investing creators', examples: 'Graham Stephan, Andrei Jikh', role: 'Script-driven content using moomoo data for reach + credibility', color: 'bg-moo-orange', width: 'w-32' },
+      { tier: 'Tier 2', size: 'Mid 50k–500k', type: 'Mets fan accounts + NYC sports creators', examples: '@MetsPolice, @FlushedWithPride', role: 'Game-day co-branded posts for community depth', color: 'bg-mets-blue', width: 'w-52' },
+      { tier: 'Tier 3', size: 'Micro 10k–50k', type: 'NYC lifestyle micro-creators', examples: 'Local Mets fans, young NYC professionals', role: 'Citi Field experience content + moomoo sign-up link for conversion', color: 'bg-green-500', width: 'w-72' },
+    ];
+
+    const KPIS = [
+      { icon: '📲', metric: 'App Downloads', sub: 'Direct response measurement', desc: 'Primary acquisition metric tracked per game, per campaign, and per activation event.', color: 'border-moo-orange' },
+      { icon: '🔓', metric: 'New Account Openings', sub: 'Fan → investor conversion rate', desc: 'Revenue driver. Attributed to specific Citi Field activations vs social vs influencer.', color: 'border-mets-blue' },
+      { icon: '🎟️', metric: 'Moomoo Monday Attendance', sub: 'Program engagement signal', desc: 'Tracks fan loyalty to the existing program and incremental lift from the 2026 upgrades.', color: 'border-green-400' },
+      { icon: '💬', metric: 'Social Engagement Rate', sub: 'Content resonance', desc: 'Measures how Swing Trade content performs vs. benchmarks across IG, TikTok, X, YouTube.', color: 'border-purple-400' },
+      { icon: '📣', metric: 'Influencer Earned Media Value', sub: 'ROI on creator spend', desc: 'Calculated as reach × engagement rate × CPM benchmark. Reported monthly.', color: 'border-yellow-400' },
+      { icon: '🏆', metric: 'Win Fund Participation', sub: 'App engagement + retention', desc: 'Tracks gamification impact: users engaging with the Win Fund vs. total active users.', color: 'border-moo-orange' },
+    ];
+
+    const CREDENTIALS = [
+      {
+        pillar: '01 — Swing Trade',
+        pillarColor: 'text-moo-orange',
+        borderColor: 'border-moo-orange',
+        headline: 'I know how to make sports content that converts.',
+        body: 'At Lucra Sports I launched the first NFL newsletter of the 2023 season — content strategy, Figma graphics, and distribution from zero. At Michigan Sport Consulting I led social growth strategy for NFL franchises, the NY Islanders, and the Detroit Pistons. I\'ve been building sports content pipelines since before "creator economy" was a buzzword.',
+        tags: ['Content Creation', 'Social Strategy', 'Figma', 'NFL / NBA / NHL'],
+      },
+      {
+        pillar: '02 — Close the Deal',
+        pillarColor: 'text-mets-blue',
+        borderColor: 'border-mets-blue',
+        headline: 'I\'ve been in the room where deals get made.',
+        body: 'At USA Hockey I executed 10+ in-person sponsorship activations at live events. At Team Playmaker, as the first hire by ex-Wasserman executives, I built the CRM and pitch framework that helped land Sporting Kansas City\'s front-of-kit and stadium naming rights for the 2026 FIFA World Cup. I understand how brand moments become business outcomes because I\'ve made them happen.',
+        tags: ['Live Activations', 'Sponsorship Sales', 'CRM', '2026 FIFA World Cup Deal'],
+      },
+      {
+        pillar: '03 — The Mets Portfolio',
+        pillarColor: 'text-green-600',
+        borderColor: 'border-green-500',
+        headline: 'I know the difference between vanity metrics and real ROI.',
+        body: 'At Wasserman I built cross-channel sponsorship impact reports for Goldman Sachs, Target, CarMax, the NHL, and the Drone Racing League — measuring what actually moved the needle across every partnership. This is exactly the analytical work a Junior Brand Marketing Specialist would own for moomoo\'s Mets campaign reporting.',
+        tags: ['Partnership Analytics', 'Sponsorship Reporting', 'Goldman Sachs', 'NHL / Target / CarMax'],
+      },
+    ];
+
+    /* ─────────────────────────────────────────
+       COMPONENTS
+    ───────────────────────────────────────── */
+
+    /* --- NAVBAR --- */
+    function Navbar() {
+      const [scrolled, setScrolled] = useState(false);
+      const [open, setOpen] = useState(false);
+
+      useEffect(() => {
+        const fn = () => setScrolled(window.scrollY > 60);
+        window.addEventListener('scroll', fn, { passive: true });
+        return () => window.removeEventListener('scroll', fn);
+      }, []);
+
+      const links = [
+        { label: 'The Brief',   href: '#opportunity' },
+        { label: 'Strategy',    href: '#strategy'    },
+        { label: 'Campaigns',   href: '#campaigns'   },
+        { label: 'Metrics',     href: '#metrics'     },
+        { label: 'About Griffin', href: '#griffin'   },
+      ];
+
+      return (
+        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300
+          ${scrolled ? 'bg-mets-navy shadow-2xl' : 'bg-transparent'}`}>
+          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="#" className="flex items-center gap-3 group">
+              <div className="w-9 h-9 rounded-full bg-moo-orange flex items-center justify-center
+                              text-white font-black text-sm flex-shrink-0 group-hover:scale-110
+                              transition-transform">GM</div>
+              <span className="text-white font-semibold text-sm tracking-tight hidden sm:block">
+                Griffin Maklansky
+              </span>
+            </a>
+
+            <div className="hidden md:flex items-center gap-7">
+              {links.map(l => (
+                <a key={l.label} href={l.href}
+                   className="text-white/70 hover:text-moo-orange transition-colors text-xs
+                              font-semibold uppercase tracking-widest">
+                  {l.label}
+                </a>
+              ))}
+            </div>
+
+            <a href="#griffin"
+               className="hidden md:inline-flex items-center gap-2 px-5 py-2 bg-moo-orange
+                          text-white text-xs font-bold uppercase tracking-wider rounded-full
+                          hover:bg-orange-500 transition-all shadow-lg hover:shadow-orange-500/30">
+              Hire Me
+            </a>
+
+            <button onClick={() => setOpen(!open)}
+                    className="md:hidden text-white p-2 rounded-lg hover:bg-white/10 transition">
+              {open
+                ? <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                : <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+              }
+            </button>
+          </div>
+
+          {open && (
+            <div className="md:hidden bg-mets-navy border-t border-white/10 px-6 py-4 mobile-nav-enter">
+              {links.map(l => (
+                <a key={l.label} href={l.href} onClick={() => setOpen(false)}
+                   className="block text-white/80 hover:text-moo-orange py-3 text-sm
+                              font-semibold uppercase tracking-wider border-b border-white/5
+                              last:border-0 transition-colors">
+                  {l.label}
+                </a>
+              ))}
+              <a href="#griffin" onClick={() => setOpen(false)}
+                 className="block mt-4 text-center px-5 py-3 bg-moo-orange text-white
+                            text-sm font-bold uppercase tracking-wider rounded-full">
+                Hire Me
+              </a>
+            </div>
+          )}
+        </nav>
+      );
+    }
+
+    /* --- HERO --- */
+    function Hero() {
+      const [loaded, setLoaded] = useState(false);
+      useEffect(() => { setTimeout(() => setLoaded(true), 100); }, []);
+
+      return (
+        <section className="relative min-h-screen bg-mets-navy flex flex-col
+                            items-center justify-center overflow-hidden">
+
+          {/* Baseball diamond SVG pattern */}
+          <svg className="absolute inset-0 w-full h-full opacity-[0.04] pointer-events-none"
+               xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="diamond" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+                <polygon points="40,4 76,40 40,76 4,40" fill="none" stroke="white" strokeWidth="1"/>
+                <circle cx="40" cy="4"  r="2" fill="white"/>
+                <circle cx="76" cy="40" r="2" fill="white"/>
+                <circle cx="40" cy="76" r="2" fill="white"/>
+                <circle cx="4"  cy="40" r="2" fill="white"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#diamond)"/>
+          </svg>
+
+          {/* Gradient glow blobs */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-moo-orange/10
+                          rounded-full filter blur-3xl pointer-events-none" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-mets-blue/10
+                          rounded-full filter blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
+            {/* Eyebrow */}
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full
+                            bg-moo-orange/15 border border-moo-orange/30 mb-8
+                            transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                 style={{ transitionDelay: '0.1s' }}>
+              <span className="w-2 h-2 rounded-full bg-moo-orange animate-pulse flex-shrink-0" />
+              <span className="text-moo-orange text-xs font-bold uppercase tracking-[0.2em]">
+                2026 Season Campaign Proposal · moomoo × New York Mets
+              </span>
+            </div>
+
+            {/* H1 */}
+            <h1 className={`text-6xl md:text-8xl font-black text-white leading-[0.9]
+                           tracking-tight mb-6 transition-all duration-700
+                           ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+                style={{ transitionDelay: '0.25s' }}>
+              From Bullpen<br />
+              <span className="text-gradient">to Bull Market</span>
+            </h1>
+
+            {/* Subhead */}
+            <p className={`text-gray-300 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed
+                          mb-12 transition-all duration-700
+                          ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+               style={{ transitionDelay: '0.4s' }}>
+              A campaign playbook for converting{' '}
+              <span className="text-white font-semibold">3 million</span> annual Citi Field visitors
+              into moomoo's next generation of investors.
+            </p>
+
+            {/* CTA */}
+            <div className={`flex flex-col sm:flex-row gap-4 justify-center items-center
+                            transition-all duration-700
+                            ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+                 style={{ transitionDelay: '0.55s' }}>
+              <a href="#opportunity"
+                 className="group flex items-center gap-3 px-8 py-4 bg-moo-orange text-white
+                            font-bold rounded-full text-sm uppercase tracking-wider shadow-2xl
+                            hover:bg-orange-500 transition-all hover:shadow-orange-500/40
+                            hover:scale-105 active:scale-95">
+                View the Playbook
+                <svg className="w-4 h-4 group-hover:translate-y-0.5 transition-transform"
+                     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 5v14M5 12l7 7 7-7"/>
+                </svg>
+              </a>
+              <a href="#griffin"
+                 className="flex items-center gap-2 px-8 py-4 border-2 border-white/20
+                            text-white font-semibold rounded-full text-sm uppercase
+                            tracking-wider hover:border-moo-orange hover:text-moo-orange
+                            transition-all">
+                About Griffin
+              </a>
+            </div>
+          </div>
+
+          {/* Bottom badge */}
+          <div className={`absolute bottom-10 left-1/2 -translate-x-1/2 transition-all duration-700
+                          ${loaded ? 'opacity-100' : 'opacity-0'}`}
+               style={{ transitionDelay: '0.8s' }}>
+            <div className="flex items-center gap-3 px-5 py-2.5 rounded-full
+                            bg-white/5 border border-white/10 backdrop-blur-sm">
+              <div className="w-7 h-7 rounded-full bg-moo-orange flex items-center
+                              justify-center text-white font-black text-xs flex-shrink-0">GM</div>
+              <span className="text-white/70 text-xs font-medium">
+                Presented by <span className="text-white font-semibold">Griffin Maklansky</span>
+                {' '}· Sports Marketing & Brand Partnerships
+              </span>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* --- STAT CARD (animated counter) --- */
+    function StatCard({ raw, display, suffix, label, color, delay }) {
+      const [ref, inView] = useInView();
+      const count = useCountUp(raw, 2000, inView);
+
+      return (
+        <div ref={ref}
+             className="reveal bg-white rounded-2xl p-8 shadow-sm border border-gray-100
+                        hover:shadow-xl transition-all hover:-translate-y-1 text-center"
+             style={{ transitionDelay: `${delay}s` }}>
+          <div className={`text-5xl font-black mb-2 ${color}`}>
+            {display(count)}{suffix}
+          </div>
+          <p className="text-gray-500 text-sm leading-snug">{label}</p>
+        </div>
+      );
+    }
+
+    /* --- OPPORTUNITY --- */
+    function Opportunity() {
+      const [titleRef, titleInView] = useInView();
+
+      useEffect(() => {
+        document.querySelectorAll('.reveal').forEach(el => {
+          const obs = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting) { el.classList.add('show'); obs.disconnect(); }
+          }, { threshold: 0.1 });
+          obs.observe(el);
+        });
+      }, []);
+
+      return (
+        <section id="opportunity" className="py-28 bg-white">
+          <div className="max-w-7xl mx-auto px-6">
+
+            {/* Section header */}
+            <div ref={titleRef}
+                 className={`text-center mb-20 transition-all duration-700
+                 ${titleInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+              <span className="text-moo-orange text-xs font-black uppercase tracking-[0.25em]">
+                The Brief
+              </span>
+              <h2 className="text-4xl md:text-5xl font-black text-mets-navy mt-3 mb-4">
+                The Opportunity
+              </h2>
+              <p className="text-gray-500 max-w-xl mx-auto text-lg">
+                moomoo's Mets partnership reaches millions of fans every season.
+                The 2026 layer should turn awareness into accounts.
+              </p>
+            </div>
+
+            {/* Stat cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+              {STATS.map((s, i) => (
+                <StatCard key={i} {...s} delay={i * 0.1} />
+              ))}
+            </div>
+
+            {/* Gap analysis */}
+            <div className="reveal grid md:grid-cols-2 gap-8 mb-20">
+              <div className="rounded-2xl p-8 bg-gray-50 border border-gray-200">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="w-8 h-8 rounded-full bg-gray-200 flex items-center
+                                   justify-center text-gray-500 font-bold text-sm flex-shrink-0">
+                    Now
+                  </span>
+                  <h3 className="font-black text-mets-navy text-xl">Current State</h3>
+                </div>
+                <ul className="space-y-4">
+                  {[
+                    ['Moomoo Mondays', '500 free tickets per Monday home game'],
+                    ['Win Fund', '$10K per Mets win; $1M if 100+ wins'],
+                    ['36-ft scoreboard display', 'Double-sided digital signage at Citi Field'],
+                    ['Edwin Diaz commercial', '"From bullpen to bull market" TV/OTT spot'],
+                  ].map(([title, sub], i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="text-gray-400 mt-1">✓</span>
+                      <div>
+                        <div className="font-semibold text-gray-800 text-sm">{title}</div>
+                        <div className="text-gray-500 text-xs">{sub}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-6 pt-5 border-t border-gray-200">
+                  <span className="inline-block px-3 py-1 rounded-full bg-gray-200
+                                   text-gray-600 text-xs font-bold uppercase tracking-wide">
+                    Awareness plays
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-8 bg-mets-navy/[0.03] border-2 border-moo-orange/30">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="w-8 h-8 rounded-full bg-moo-orange flex items-center
+                                   justify-center text-white font-bold text-sm flex-shrink-0">
+                    '26
+                  </span>
+                  <h3 className="font-black text-mets-navy text-xl">2026 Opportunity</h3>
+                </div>
+                <ul className="space-y-4">
+                  {[
+                    ['Swing Trade social series', 'Weekly content mapping Mets stats → investing concepts'],
+                    ['Trading Desk activation', 'In-stadium conversion touchpoint at Section 109'],
+                    ['Moomoo Monday upgrade', 'Pre-game "Market" event — exclusive, social-native'],
+                    ['The Mets Portfolio', '162-game community campaign with weekly watchlist drops'],
+                  ].map(([title, sub], i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="text-moo-orange mt-1">▸</span>
+                      <div>
+                        <div className="font-semibold text-mets-navy text-sm">{title}</div>
+                        <div className="text-gray-500 text-xs">{sub}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-6 pt-5 border-t border-moo-orange/20">
+                  <span className="inline-block px-3 py-1 rounded-full bg-moo-orange/10
+                                   text-orange-700 text-xs font-bold uppercase tracking-wide">
+                    Conversion engine
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Core insight */}
+            <div className="reveal max-w-3xl mx-auto text-center">
+              <div className="relative bg-mets-navy rounded-3xl p-10 overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r
+                                from-moo-orange via-mets-blue to-moo-orange" />
+                <div className="text-moo-orange text-5xl mb-4 font-black leading-none">"</div>
+                <blockquote className="text-white text-xl md:text-2xl font-semibold
+                                       leading-relaxed mb-6">
+                  Baseball already teaches the fundamentals of investing — risk vs. reward,
+                  long-term patience, reading the data. moomoo's job is to make that
+                  connection feel{' '}
+                  <span className="text-gradient">obvious</span>.
+                  Every at-bat is a trade. Every season is a portfolio.
+                </blockquote>
+                <div className="text-gray-400 text-sm font-medium tracking-wide">
+                  — The strategic thesis for the 2026 campaign
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* --- STRATEGY --- */
+    function Strategy() {
+      return (
+        <section id="strategy" className="py-28 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-16 reveal">
+              <span className="text-moo-orange text-xs font-black uppercase tracking-[0.25em]">
+                The Framework
+              </span>
+              <h2 className="text-4xl md:text-5xl font-black text-mets-navy mt-3 mb-4">
+                Three Strategic Pillars
+              </h2>
+              <p className="text-gray-500 max-w-xl mx-auto text-lg">
+                Every tactic in the 2026 playbook maps back to one of three pillars.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {PILLARS.map((p, i) => (
+                <div key={i}
+                     className={`reveal pillar-card bg-white rounded-3xl p-8 border-t-4
+                                 ${p.color} shadow-sm hover:shadow-xl`}
+                     style={{ transitionDelay: `${i * 0.12}s` }}>
+                  <div className={`w-12 h-12 rounded-2xl ${p.bg} flex items-center
+                                   justify-center text-2xl mb-6`}>
+                    {p.icon}
+                  </div>
+                  <div className="flex items-start justify-between mb-3">
+                    <span className="text-gray-200 font-black text-5xl leading-none select-none">
+                      {p.number}
+                    </span>
+                  </div>
+                  <h3 className="font-black text-mets-navy text-2xl mb-2">{p.name}</h3>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold
+                                   uppercase tracking-wide mb-4 ${p.tagColor}`}>
+                    {p.tag}
+                  </span>
+                  <p className="text-gray-600 text-sm leading-relaxed">{p.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* --- CAMPAIGNS --- */
+    function Campaigns() {
+      const [active, setActive] = useState(0);
+
+      const campaigns = [
+        {
+          number: '01',
+          name: 'Swing Trade',
+          tag: 'Digital & Social Series',
+          tagColor: 'bg-moo-orange/10 text-orange-700',
+          accent: 'bg-moo-orange',
+          borderColor: 'border-moo-orange',
+          textAccent: 'text-moo-orange',
+          bigIdea: 'A weekly short-form content series on Instagram, TikTok, and YouTube Shorts that maps Mets game moments to investing concepts — making moomoo feel native to every box score.',
+          examples: [
+            { mets: "Edwin Diaz's save percentage", moomoo: "Win rate / trade success rate" },
+            { mets: "A lineup card", moomoo: "A diversified portfolio" },
+            { mets: "Batting average", moomoo: "Average return rate" },
+            { mets: "Extra innings", moomoo: "Holding a position through volatility" },
+          ],
+          calendar: true,
+          whyItWorks: 'Baseball fans already think in stats. This campaign meets them where they are and plants the moomoo brand in a mental framework they already trust.',
+        },
+        {
+          number: '02',
+          name: 'Close the Deal',
+          tag: 'Citi Field Activations',
+          tagColor: 'bg-mets-blue/10 text-blue-700',
+          accent: 'bg-mets-blue',
+          borderColor: 'border-mets-blue',
+          textAccent: 'text-mets-blue',
+          bigIdea: 'Three new touchpoints layered onto the existing partnership — transforming the in-stadium moomoo presence from passive signage to an active conversion engine.',
+          touchpoints: [
+            {
+              label: 'A — The moomoo Trading Desk',
+              desc: 'A staffed activation space near Section 109 (right-field promenade, highest foot traffic). Fans scan a QR code, open the moomoo app, and receive a Mets-themed "Opening Day Portfolio" — a curated watchlist of companies connected to baseball and NYC. First 200 sign-ups each game get entered in the Win Fund drawing.',
+            },
+            {
+              label: 'B — "Pitch Count = Trade Count"',
+              desc: 'Work with Citi Field scoreboard ops to add a moomoo data overlay after each half-inning: "[Pitcher Name]\'s pitch count today: X. moomoo users made [Y] trades in the last 30 minutes. Are you in the game?" Gamifies the real-time trading angle and reinforces the platform\'s live-data positioning.',
+            },
+            {
+              label: 'C — Moomoo Monday Upgrade',
+              desc: '2026 upgrade on the existing 500-ticket program: a "Moomoo Monday Market" pre-game experience 90 minutes before first pitch — exclusive section, financial wellness event, Mets player appearance, live portfolio challenge. Shareable, social-native, drives FOMO for non-users.',
+            },
+          ],
+          whyItWorks: 'The stadium is moomoo\'s most captive, highest-intent audience. Fans already in seats, already engaged — the goal is to give them one tap to open the app before the 7th inning stretch.',
+        },
+        {
+          number: '03',
+          name: 'The Mets Portfolio',
+          tag: 'Season-Long Community Campaign',
+          tagColor: 'bg-green-100 text-green-700',
+          accent: 'bg-green-500',
+          borderColor: 'border-green-500',
+          textAccent: 'text-green-600',
+          bigIdea: 'A season-long program where moomoo users build a virtual "Mets Portfolio" — a watchlist of stocks tied to Mets sponsors, NYC companies, and baseball industry leaders — creating a 162-game retention loop.',
+          mechanics: [
+            { step: 'Launch', desc: 'Opening Day 2026. Every moomoo user gets access to the "Mets Portfolio" watchlist feature.' },
+            { step: 'Weekly Drop', desc: 'Each week, one new stock is added to the watchlist — tied to a game moment, sponsor activation, or MLB milestone.' },
+            { step: 'Community', desc: 'Users share their portfolio performance on social, just like they share standings. UGC flywheel.' },
+            { step: 'Season End', desc: 'Top performer wins a premium experience: Mets suite, meet-and-greet, and moomoo merchandise package.' },
+          ],
+          whyItWorks: 'Every other campaign in this playbook drives acquisition. This one drives retention — giving existing moomoo users a reason to open the app every single week of the season.',
+        },
+      ];
+
+      const c = campaigns[active];
+
+      return (
+        <section id="campaigns" className="py-28 bg-white">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-16 reveal">
+              <span className="text-moo-orange text-xs font-black uppercase tracking-[0.25em]">
+                The Campaigns
+              </span>
+              <h2 className="text-4xl md:text-5xl font-black text-mets-navy mt-3 mb-4">
+                Three Campaign Concepts
+              </h2>
+              <p className="text-gray-500 max-w-xl mx-auto text-lg">
+                Each one maps to a strategic pillar and a different stage of the fan journey.
+              </p>
+            </div>
+
+            {/* Tab switcher */}
+            <div className="reveal flex flex-col sm:flex-row gap-4 mb-12 p-2
+                            bg-gray-100 rounded-2xl max-w-2xl mx-auto">
+              {campaigns.map((camp, i) => (
+                <button key={i} onClick={() => setActive(i)}
+                        className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold
+                                   transition-all ${active === i
+                                     ? 'bg-mets-navy text-white shadow-lg'
+                                     : 'text-gray-500 hover:text-mets-navy'}`}>
+                  <span className={`text-xs mr-1 ${active === i ? 'text-moo-orange' : 'text-gray-400'}`}>
+                    {camp.number}
+                  </span>
+                  {camp.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Campaign detail card */}
+            <div className={`reveal campaign-card border-2 ${c.borderColor}
+                            rounded-3xl overflow-hidden bg-white shadow-lg`}>
+              {/* Card header */}
+              <div className="bg-mets-navy px-8 pt-10 pb-8">
+                <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+                  <div>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold
+                                     uppercase tracking-wide mb-3 ${c.tagColor} bg-white/10
+                                     text-white/80`}>
+                      {c.tag}
+                    </span>
+                    <h3 className="text-4xl font-black text-white">{c.name}</h3>
+                  </div>
+                  <span className="text-white/10 font-black text-7xl leading-none select-none">
+                    {c.number}
+                  </span>
+                </div>
+                <p className="text-gray-300 text-base leading-relaxed max-w-3xl">
+                  {c.bigIdea}
+                </p>
+              </div>
+
+              {/* Card body */}
+              <div className="p-8">
+                {/* Campaign 1 — examples + calendar */}
+                {c.examples && (
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                      <h4 className="font-black text-mets-navy text-lg mb-4 flex items-center gap-2">
+                        <span className="text-moo-orange">⚾</span> The Metaphor Map
+                      </h4>
+                      <div className="space-y-3">
+                        {c.examples.map((ex, i) => (
+                          <div key={i} className="flex items-center gap-4 bg-gray-50
+                                                  rounded-xl p-4 text-sm">
+                            <div className="text-gray-700 font-semibold w-44 flex-shrink-0">
+                              {ex.mets}
+                            </div>
+                            <svg className="w-4 h-4 text-moo-orange flex-shrink-0"
+                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                            <div className={`font-bold ${c.textAccent}`}>{ex.moomoo}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-black text-mets-navy text-lg mb-4 flex items-center gap-2">
+                        <span className="text-moo-orange">📅</span> Content Calendar Sample
+                      </h4>
+                      <div className="space-y-3">
+                        {CAMPAIGN_CALENDAR.map((row, i) => (
+                          <div key={i} className="bg-gray-50 rounded-xl p-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-black text-mets-navy text-sm">{row.day}</span>
+                              <span className="text-gray-400 text-xs">· {row.platform}</span>
+                            </div>
+                            <p className="text-gray-600 text-xs leading-relaxed">{row.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campaign 2 — touchpoints */}
+                {c.touchpoints && (
+                  <div className="space-y-5">
+                    <h4 className="font-black text-mets-navy text-lg flex items-center gap-2">
+                      <span className={c.textAccent}>🏟️</span> Three New Touchpoints
+                    </h4>
+                    {c.touchpoints.map((tp, i) => (
+                      <div key={i} className="flex gap-5 bg-gray-50 rounded-2xl p-6">
+                        <div className={`w-8 h-8 rounded-full ${c.accent} flex items-center
+                                        justify-center text-white font-black text-xs
+                                        flex-shrink-0 mt-0.5`}>
+                          {String.fromCharCode(65 + i)}
+                        </div>
+                        <div>
+                          <div className="font-black text-mets-navy mb-2">{tp.label}</div>
+                          <p className="text-gray-600 text-sm leading-relaxed">{tp.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Campaign 3 — mechanics */}
+                {c.mechanics && (
+                  <div>
+                    <h4 className="font-black text-mets-navy text-lg mb-6 flex items-center gap-2">
+                      <span className={c.textAccent}>📈</span> How It Works
+                    </h4>
+                    <div className="relative">
+                      {c.mechanics.map((m, i) => (
+                        <div key={i} className="flex gap-5 mb-6 last:mb-0">
+                          <div className="flex flex-col items-center">
+                            <div className={`w-8 h-8 rounded-full ${c.accent} flex items-center
+                                            justify-center text-white font-black text-xs flex-shrink-0`}>
+                              {i + 1}
+                            </div>
+                            {i < c.mechanics.length - 1 && (
+                              <div className="w-0.5 flex-1 bg-gray-200 mt-2" />
+                            )}
+                          </div>
+                          <div className="pb-6 last:pb-0">
+                            <div className="font-black text-mets-navy mb-1">{m.step}</div>
+                            <p className="text-gray-600 text-sm leading-relaxed">{m.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Why it works */}
+                <div className={`mt-8 p-5 rounded-2xl border-l-4 ${c.borderColor} bg-gray-50`}>
+                  <div className="text-xs font-black uppercase tracking-wider text-gray-400 mb-2">
+                    Why It Works
+                  </div>
+                  <p className="text-gray-700 text-sm leading-relaxed font-medium">
+                    {c.whyItWorks}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* --- CONTENT & INFLUENCER --- */
+    function ContentInfluencer() {
+      const PILLARS_CONTENT = [
+        {
+          icon: '🎓', label: 'Educate',
+          color: 'bg-blue-50 border-mets-blue',
+          items: [
+            '"What your batting average and your portfolio have in common"',
+            '"5 Mets stats that explain diversification"',
+            '"Edwin Diaz saves — and so does your emergency fund"',
+          ],
+        },
+        {
+          icon: '🎉', label: 'Entertain',
+          color: 'bg-orange-50 border-moo-orange',
+          items: [
+            'Game-day hype content with moomoo overlay graphics',
+            'Win Fund countdown reels after every Mets win',
+            'Behind-the-scenes of moomoo Monday Market events',
+          ],
+        },
+        {
+          icon: '🙌', label: 'Engage',
+          color: 'bg-green-50 border-green-400',
+          items: [
+            '"Show us your Mets Portfolio" UGC challenge',
+            'Weekly "Who wins — Mets or the market?" Story polls',
+            'Influencer takeovers on Mets Monday game days',
+          ],
+        },
+      ];
+
+      return (
+        <section id="content" className="py-28 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-16 reveal">
+              <span className="text-moo-orange text-xs font-black uppercase tracking-[0.25em]">
+                Content & Influencer
+              </span>
+              <h2 className="text-4xl md:text-5xl font-black text-mets-navy mt-3 mb-4">
+                The Content Engine
+              </h2>
+              <p className="text-gray-500 max-w-xl mx-auto text-lg">
+                Three content pillars and a tiered influencer framework built for
+                the sports-finance audience crossover.
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-12 items-start">
+              {/* Content pillars */}
+              <div className="reveal">
+                <h3 className="font-black text-mets-navy text-xl mb-6">Content Pillars</h3>
+                <div className="space-y-5">
+                  {PILLARS_CONTENT.map((p, i) => (
+                    <div key={i} className={`rounded-2xl p-6 border-2 ${p.color} bg-white`}>
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="text-2xl">{p.icon}</span>
+                        <h4 className="font-black text-mets-navy text-lg">{p.label}</h4>
+                      </div>
+                      <ul className="space-y-2">
+                        {p.items.map((item, j) => (
+                          <li key={j} className="flex items-start gap-2 text-sm text-gray-600">
+                            <span className="text-moo-orange flex-shrink-0 mt-0.5">▸</span>
+                            <span className="italic">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Influencer framework */}
+              <div className="reveal" style={{ transitionDelay: '0.15s' }}>
+                <h3 className="font-black text-mets-navy text-xl mb-6">Influencer Framework</h3>
+                <div className="space-y-4">
+                  {INFLUENCER_TIERS.map((t, i) => (
+                    <div key={i} className="bg-white rounded-2xl p-6 border border-gray-100
+                                            shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-4">
+                        <div className={`w-2 self-stretch rounded-full ${t.color} flex-shrink-0`} />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold
+                                            text-white ${t.color}`}>
+                              {t.tier}
+                            </span>
+                            <span className="font-black text-mets-navy text-sm">{t.size}</span>
+                          </div>
+                          <div className="font-semibold text-gray-800 text-sm mb-1">
+                            {t.type}
+                          </div>
+                          <div className="text-gray-400 text-xs mb-3 italic">
+                            e.g. {t.examples}
+                          </div>
+                          <p className="text-gray-600 text-xs leading-relaxed">
+                            {t.role}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 p-5 bg-mets-navy rounded-2xl">
+                  <div className="text-moo-orange text-xs font-black uppercase tracking-wider mb-2">
+                    Reporting Cadence
+                  </div>
+                  <div className="space-y-1.5">
+                    {[
+                      ['Weekly', 'Social metrics + Win Fund tracking'],
+                      ['Monthly', 'Account openings + app engagement by source'],
+                      ['Post-Season', 'Full campaign impact report with ROI attribution'],
+                    ].map(([period, desc], i) => (
+                      <div key={i} className="flex gap-3 text-sm">
+                        <span className="text-moo-orange font-bold w-20 flex-shrink-0">{period}</span>
+                        <span className="text-gray-300">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* --- MEASUREMENT --- */
+    function Measurement() {
+      return (
+        <section id="metrics" className="py-28 bg-mets-navy">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-16 reveal">
+              <span className="text-moo-orange text-xs font-black uppercase tracking-[0.25em]">
+                Measurement Framework
+              </span>
+              <h2 className="text-4xl md:text-5xl font-black text-white mt-3 mb-4">
+                The Campaign Scorecard
+              </h2>
+              <p className="text-gray-400 max-w-xl mx-auto text-lg">
+                Six KPIs that tell moomoo exactly what's working — and what to double down on.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {KPIS.map((kpi, i) => (
+                <div key={i}
+                     className={`reveal bg-white/5 border-2 ${kpi.color} rounded-2xl p-7
+                                 hover:bg-white/10 transition-all hover:-translate-y-1`}
+                     style={{ transitionDelay: `${i * 0.08}s` }}>
+                  <div className="text-4xl mb-4">{kpi.icon}</div>
+                  <h3 className="font-black text-white text-lg mb-1">{kpi.metric}</h3>
+                  <div className="text-moo-orange text-xs font-bold uppercase tracking-wide mb-3">
+                    {kpi.sub}
+                  </div>
+                  <p className="text-gray-400 text-sm leading-relaxed">{kpi.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* --- WHY GRIFFIN --- */
+    function WhyGriffin() {
+      return (
+        <section id="griffin" className="py-28 bg-white">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-16 reveal">
+              <span className="text-moo-orange text-xs font-black uppercase tracking-[0.25em]">
+                The Hire
+              </span>
+              <h2 className="text-4xl md:text-5xl font-black text-mets-navy mt-3 mb-4">
+                Why Griffin
+              </h2>
+              <p className="text-gray-500 max-w-xl mx-auto text-lg">
+                One credential for each of the three strategic pillars — from the
+                exact experience that would make them happen.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 mb-16">
+              {CREDENTIALS.map((c, i) => (
+                <div key={i}
+                     className={`reveal bg-white rounded-3xl border-t-4 ${c.borderColor}
+                                 shadow-sm hover:shadow-xl transition-all p-8`}
+                     style={{ transitionDelay: `${i * 0.12}s` }}>
+                  <div className={`text-xs font-black uppercase tracking-[0.2em] mb-4 ${c.pillarColor}`}>
+                    {c.pillar}
+                  </div>
+                  <h3 className="font-black text-mets-navy text-xl leading-tight mb-5">
+                    {c.headline}
+                  </h3>
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6">{c.body}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {c.tags.map((t, j) => (
+                      <span key={j}
+                            className="px-3 py-1 bg-gray-100 text-gray-600 text-xs
+                                       font-semibold rounded-full">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Credential snapshot */}
+            <div className="reveal max-w-3xl mx-auto">
+              <div className="bg-mets-navy rounded-3xl p-10 text-center">
+                <div className="w-20 h-20 rounded-full bg-moo-orange flex items-center
+                                justify-center text-white font-black text-3xl mx-auto mb-6">
+                  GM
+                </div>
+                <h3 className="text-white font-black text-2xl mb-1">Griffin Maklansky</h3>
+                <p className="text-gray-400 text-sm mb-2">
+                  Account Coordinator · Team Playmaker (ex-Wasserman execs) · NYC
+                </p>
+                <p className="text-gray-400 text-xs mb-8">
+                  BA Sport Management · University of Michigan · GPA 3.88 · April 2024
+                </p>
+
+                <div className="grid grid-cols-3 gap-4 mb-10 text-center">
+                  {[
+                    { val: '6+', label: 'Sports orgs' },
+                    { val: 'FIFA \'26', label: 'Deal secured' },
+                    { val: '3.88', label: 'GPA' },
+                  ].map((s, i) => (
+                    <div key={i}>
+                      <div className="text-moo-orange font-black text-2xl">{s.val}</div>
+                      <div className="text-gray-500 text-xs">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                  <a href="mailto:griffinmaklansky@gmail.com"
+                     className="flex items-center gap-2 px-7 py-3.5 bg-moo-orange text-white
+                                font-bold rounded-full text-sm hover:bg-orange-500 transition-all
+                                shadow-xl hover:shadow-orange-500/30 hover:scale-105">
+                    griffinmaklansky@gmail.com
+                  </a>
+                  <a href="tel:9734202559"
+                     className="flex items-center gap-2 px-7 py-3.5 border-2 border-white/20
+                                text-white font-semibold rounded-full text-sm
+                                hover:border-moo-orange hover:text-moo-orange transition-all">
+                    973-420-2559
+                  </a>
+                  <a href="https://linkedin.com/in/griffin-maklansky/"
+                     target="_blank" rel="noopener noreferrer"
+                     className="flex items-center gap-2 px-7 py-3.5 border-2 border-white/20
+                                text-white font-semibold rounded-full text-sm
+                                hover:border-mets-blue hover:text-mets-blue transition-all">
+                    LinkedIn ↗
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* --- FOOTER --- */
+    function Footer() {
+      return (
+        <footer className="bg-mets-navy border-t border-white/5 py-8">
+          <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center
+                          justify-between gap-4 text-center">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-moo-orange flex items-center
+                              justify-center text-white font-black text-xs">GM</div>
+              <span className="text-gray-400 text-sm">
+                Griffin Maklansky · 2026 Campaign Playbook
+              </span>
+            </div>
+            <span className="text-gray-600 text-xs">
+              Built with React 18 + Tailwind CSS · No build step.
+            </span>
+          </div>
+        </footer>
+      );
+    }
+
+    /* ─────────────────────────────────────────
+       ROOT APP
+    ───────────────────────────────────────── */
+    function App() {
+      useEffect(() => {
+        // Wire up global .reveal scroll animations
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach(e => {
+              if (e.isIntersecting) {
+                e.target.classList.add('show');
+              }
+            });
+          },
+          { threshold: 0.08 }
+        );
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        return () => observer.disconnect();
+      }, []);
+
+      return (
+        <>
+          <Navbar />
+          <Hero />
+          <Opportunity />
+          <Strategy />
+          <Campaigns />
+          <ContentInfluencer />
+          <Measurement />
+          <WhyGriffin />
+          <Footer />
+        </>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
