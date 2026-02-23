@@ -6027,6 +6027,227 @@
           }
 ];
 
+        // Smart merge modal — upload Excel, preview new/conflict/matching, apply
+        function MergeModal({ prospects, onClose, onApply }) {
+            const [step, setStep] = React.useState(1);
+            const [preview, setPreview] = React.useState(null);
+            const [selections, setSelections] = React.useState({});
+            const [newSelections, setNewSelections] = React.useState({});
+
+            const normalize = (str) => (str || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+            const handleFile = (file) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets['APPROVED BRANDS '] || workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+
+                    const excelCompanies = rows.map(row => ({
+                        companyName: row['CLEANED UP NAME'] || row['COMPANY NAME (CLEANED UP)'] || row['COMPANY NAME'] || '',
+                        originalName: row['COMPANY NAME'] || '',
+                        hq: row['HQ'] || '',
+                        employees: row['NUMBER OF EMPLOYEES '] || row['NUMBER OF EMPLOYEES'] || null,
+                        kcEmployees: row['NUMBER OF KC EMPLOYEES '] || row['NUMBER OF KC EMPLOYEES'] || null,
+                        revenue: row['ANNUAL REVENUE '] || row['ANNUAL REVENUE'] || null,
+                        context: row['CONTEXT '] || row['CONTEXT'] || '',
+                        skcNotes: row['SKC NOTES'] || '',
+                    })).filter(c => c.companyName);
+
+                    const FIELDS = ['hq', 'employees', 'kcEmployees', 'revenue', 'context', 'skcNotes'];
+                    const newCompanies = [];
+                    const conflicts = [];
+                    const matching = [];
+
+                    excelCompanies.forEach(excelCo => {
+                        const siteCo = prospects.find(p => normalize(p.companyName) === normalize(excelCo.companyName));
+                        if (!siteCo) {
+                            newCompanies.push(excelCo);
+                        } else {
+                            const diffFields = FIELDS.filter(f => {
+                                const sv = siteCo[f] == null ? '' : String(siteCo[f]).trim();
+                                const ev = excelCo[f] == null ? '' : String(excelCo[f]).trim();
+                                return sv !== ev;
+                            });
+                            if (diffFields.length > 0) {
+                                conflicts.push({ siteCo, excelCo, diffFields });
+                            } else {
+                                matching.push(siteCo.companyName);
+                            }
+                        }
+                    });
+
+                    const defaultNew = {};
+                    newCompanies.forEach(c => { defaultNew[c.companyName] = true; });
+                    setNewSelections(defaultNew);
+
+                    const defaultSel = {};
+                    conflicts.forEach(({ siteCo, diffFields }) => {
+                        defaultSel[siteCo.id] = {};
+                        diffFields.forEach(f => { defaultSel[siteCo.id][f] = 'excel'; });
+                    });
+                    setSelections(defaultSel);
+
+                    setPreview({ newCompanies, conflicts, matching });
+                    setStep(2);
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            const handleApply = () => {
+                const changes = [];
+                preview.newCompanies.forEach(c => {
+                    if (newSelections[c.companyName]) changes.push({ type: 'add', company: c });
+                });
+                preview.conflicts.forEach(({ siteCo, excelCo, diffFields }) => {
+                    const fieldChoices = selections[siteCo.id] || {};
+                    const updates = {};
+                    diffFields.forEach(f => {
+                        if (fieldChoices[f] === 'excel') updates[f] = excelCo[f];
+                    });
+                    if (Object.keys(updates).length > 0) changes.push({ type: 'update', id: siteCo.id, updates });
+                });
+                onApply(changes);
+                onClose();
+            };
+
+            const formatVal = (key, val) => {
+                if (val == null || val === '') return '—';
+                if (key === 'revenue') {
+                    if (val >= 1e9) return `$${(val/1e9).toFixed(1)}B`;
+                    if (val >= 1e6) return `$${(val/1e6).toFixed(1)}M`;
+                    return `$${Number(val).toLocaleString()}`;
+                }
+                if (key === 'employees' || key === 'kcEmployees') return Number(val).toLocaleString();
+                return String(val).length > 60 ? String(val).slice(0, 60) + '…' : String(val);
+            };
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-content" style={{ width: '720px', maxWidth: '95%' }} onClick={e => e.stopPropagation()}>
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">Import / Sync Excel</h2>
+                                    <p className="text-sm text-gray-500 mt-0.5">
+                                        {step === 1 ? 'Upload your APPROVED BRANDS spreadsheet' : 'Review changes before applying'}
+                                    </p>
+                                </div>
+                                <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                            </div>
+
+                            {step === 1 && (
+                                <div
+                                    className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                                    onClick={() => document.getElementById('merge-file-input').click()}
+                                    onDragOver={e => e.preventDefault()}
+                                    onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+                                >
+                                    <svg className="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <p className="text-gray-500 font-medium">Drop your .xlsx file here or click to browse</p>
+                                    <p className="text-xs text-gray-400 mt-1">Reads from the "APPROVED BRANDS" sheet</p>
+                                    <input id="merge-file-input" type="file" accept=".xlsx" className="hidden" onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0]); }} />
+                                </div>
+                            )}
+
+                            {step === 2 && preview && (
+                                <div className="space-y-5 max-h-[60vh] overflow-y-auto">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="font-semibold text-gray-800">
+                                                New companies
+                                                <span className="ml-2 bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">{preview.newCompanies.length}</span>
+                                            </h3>
+                                            <button
+                                                onClick={() => { const all = {}; preview.newCompanies.forEach(c => { all[c.companyName] = true; }); setNewSelections(all); }}
+                                                className="text-xs text-blue-600 hover:underline"
+                                            >Select all</button>
+                                        </div>
+                                        {preview.newCompanies.length === 0 && <p className="text-sm text-gray-400 italic">None</p>}
+                                        <div className="space-y-1">
+                                            {preview.newCompanies.map(c => (
+                                                <label key={c.companyName} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" checked={newSelections[c.companyName] || false} onChange={e => setNewSelections(prev => ({ ...prev, [c.companyName]: e.target.checked }))} className="rounded" />
+                                                    <span className="text-sm font-medium text-gray-800">{c.companyName}</span>
+                                                    <span className="text-xs text-gray-400">{c.hq}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {preview.conflicts.length > 0 && (
+                                        <div>
+                                            <h3 className="font-semibold text-gray-800 mb-2">
+                                                Conflicts
+                                                <span className="ml-2 bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full">{preview.conflicts.length}</span>
+                                            </h3>
+                                            <div className="space-y-3">
+                                                {preview.conflicts.map(({ siteCo, excelCo, diffFields }) => (
+                                                    <div key={siteCo.id} className="border border-yellow-200 rounded-lg overflow-hidden">
+                                                        <div className="bg-yellow-50 px-3 py-2 font-medium text-sm text-gray-800">{siteCo.companyName}</div>
+                                                        <table className="w-full text-xs">
+                                                            <thead>
+                                                                <tr className="bg-gray-50 text-gray-500">
+                                                                    <th className="text-left px-3 py-1.5 w-24">Field</th>
+                                                                    <th className="text-left px-3 py-1.5">Current (site)</th>
+                                                                    <th className="text-left px-3 py-1.5">Excel</th>
+                                                                    <th className="px-3 py-1.5 w-20 text-center">Keep</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {diffFields.map(f => (
+                                                                    <tr key={f} className="border-t border-gray-100">
+                                                                        <td className="px-3 py-2 font-medium text-gray-600 capitalize">{f}</td>
+                                                                        <td className="px-3 py-2 text-gray-500">{formatVal(f, siteCo[f])}</td>
+                                                                        <td className="px-3 py-2 text-gray-800">{formatVal(f, excelCo[f])}</td>
+                                                                        <td className="px-3 py-2 text-center">
+                                                                            <select
+                                                                                value={selections[siteCo.id]?.[f] || 'excel'}
+                                                                                onChange={e => setSelections(prev => ({ ...prev, [siteCo.id]: { ...(prev[siteCo.id] || {}), [f]: e.target.value }}))}
+                                                                                className="text-xs border border-gray-200 rounded px-1 py-0.5"
+                                                                            >
+                                                                                <option value="site">Site</option>
+                                                                                <option value="excel">Excel</option>
+                                                                            </select>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <p className="text-xs text-gray-400">
+                                            <span className="font-medium text-gray-500">{preview.matching.length} companies</span> are identical in both — no changes needed.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                                <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
+                                {step === 2 && (
+                                    <button
+                                        onClick={handleApply}
+                                        className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                    >
+                                        Apply {Object.values(newSelections).filter(Boolean).length + preview.conflicts.length} Changes
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         // Inline editable single-line field
         function InlineField({ value, onSave, format, placeholder = '—', className = '' }) {
             const [editing, setEditing] = React.useState(false);
@@ -6318,6 +6539,33 @@
                 setProspects(prev => [...prev, ...newCompanies]);
                 setShowImportModal(false);
                 setImportPreview(null);
+            };
+
+            const handleMergeApply = (changes) => {
+                setProspects(prev => {
+                    let updated = [...prev];
+                    const maxId = Math.max(...updated.map(p => p.id), 0);
+                    let nextId = maxId + 1;
+                    changes.forEach(change => {
+                        if (change.type === 'add') {
+                            updated.push({
+                                id: nextId++,
+                                companyName: change.company.companyName,
+                                originalName: change.company.originalName || change.company.companyName,
+                                seller: 'Unassigned',
+                                hq: change.company.hq || '',
+                                employees: change.company.employees ? parseInt(change.company.employees) : null,
+                                kcEmployees: change.company.kcEmployees ? parseInt(change.company.kcEmployees) : null,
+                                revenue: change.company.revenue ? parseFloat(change.company.revenue) : null,
+                                context: change.company.context || '',
+                                skcNotes: change.company.skcNotes || '',
+                            });
+                        } else if (change.type === 'update') {
+                            updated = updated.map(p => p.id === change.id ? { ...p, ...change.updates } : p);
+                        }
+                    });
+                    return updated;
+                });
             };
 
             // Save notes for a company
@@ -7890,182 +8138,12 @@
                     )}
 
 
-                    {/* Import Excel Modal */}
                     {showImportModal && (
-                        <div className="modal-overlay" onClick={() => { setShowImportModal(false); setImportPreview(null); }}>
-                            <div className="modal-content" style={{width: '800px', maxWidth: '95%'}} onClick={(e) => e.stopPropagation()}>
-                                <div className="p-6">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h2 className="text-2xl font-bold text-gray-900">Import Companies from Excel</h2>
-                                        <button
-                                            onClick={() => { setShowImportModal(false); setImportPreview(null); }}
-                                            className="text-gray-400 hover:text-gray-600 text-2xl"
-                                        >
-                                            x
-                                        </button>
-                                    </div>
-
-                                    {!importPreview ? (
-                                        <div>
-                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                                                <div className="text-4xl mb-4">📊</div>
-                                                <p className="text-gray-600 mb-4">Upload an Excel (.xlsx, .xls) or CSV file</p>
-                                                <input
-                                                    type="file"
-                                                    accept=".xlsx,.xls,.csv"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files[0];
-                                                        if (!file) return;
-                                                        const reader = new FileReader();
-                                                        reader.onload = (evt) => {
-                                                            try {
-                                                                const data = new Uint8Array(evt.target.result);
-                                                                const workbook = XLSX.read(data, { type: 'array' });
-                                                                const sheetName = workbook.SheetNames[0];
-                                                                const worksheet = workbook.Sheets[sheetName];
-                                                                const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-                                                                if (jsonData.length === 0) {
-                                                                    alert('No data found in the file.');
-                                                                    return;
-                                                                }
-
-                                                                const headers = Object.keys(jsonData[0]);
-                                                                setImportPreview({ rows: jsonData, headers: headers, mapping: {
-                                                                    companyName: headers.find(h => /company|name|business/i.test(h)) || headers[0] || '',
-                                                                    hq: headers.find(h => /hq|headquarters|location|city/i.test(h)) || '',
-                                                                    employees: headers.find(h => /employee|headcount|staff/i.test(h)) || '',
-                                                                    kcEmployees: headers.find(h => /kc.*employee|kansas.*city.*employee/i.test(h)) || '',
-                                                                    revenue: headers.find(h => /revenue|sales|income/i.test(h)) || '',
-                                                                    seller: headers.find(h => /seller|assigned|owner|rep/i.test(h)) || '',
-                                                                    context: headers.find(h => /context|description|notes|info/i.test(h)) || '',
-                                                                    skcNotes: headers.find(h => /skc.*note|internal.*note/i.test(h)) || ''
-                                                                }});
-                                                            } catch (err) {
-                                                                alert('Error reading file: ' + err.message);
-                                                            }
-                                                        };
-                                                        reader.readAsArrayBuffer(file);
-                                                    }}
-                                                    className="mx-auto"
-                                                />
-                                            </div>
-                                            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                                                <h3 className="font-semibold text-gray-900 mb-2">Expected Columns</h3>
-                                                <p className="text-sm text-gray-600">Your file should have columns for: Company Name, Headquarters, Employees, KC Employees, Revenue, Seller, Context, SKC Notes</p>
-                                                <p className="text-xs text-gray-500 mt-2">Column names will be auto-matched. You can adjust the mapping after upload.</p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                                <p className="font-semibold text-green-800">Found {importPreview.rows.length} companies to import</p>
-                                            </div>
-
-                                            <h3 className="font-semibold text-gray-900 mb-3">Map Columns</h3>
-                                            <div className="grid grid-cols-2 gap-3 mb-6">
-                                                {[
-                                                    { key: 'companyName', label: 'Company Name *' },
-                                                    { key: 'hq', label: 'Headquarters' },
-                                                    { key: 'employees', label: 'Employees' },
-                                                    { key: 'kcEmployees', label: 'KC Employees' },
-                                                    { key: 'revenue', label: 'Revenue' },
-                                                    { key: 'seller', label: 'Seller' },
-                                                    { key: 'context', label: 'Context' },
-                                                    { key: 'skcNotes', label: 'SKC Notes' }
-                                                ].map(field => (
-                                                    <div key={field.key} className="flex items-center gap-2">
-                                                        <label className="text-sm font-medium text-gray-700 w-32">{field.label}:</label>
-                                                        <select
-                                                            value={importPreview.mapping[field.key]}
-                                                            onChange={(e) => setImportPreview(prev => ({
-                                                                ...prev,
-                                                                mapping: { ...prev.mapping, [field.key]: e.target.value }
-                                                            }))}
-                                                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                                                        >
-                                                            <option value="">-- Skip --</option>
-                                                            {importPreview.headers.map(h => (
-                                                                <option key={h} value={h}>{h}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <h3 className="font-semibold text-gray-900 mb-2">Preview (first 5 rows)</h3>
-                                            <div className="overflow-x-auto border rounded-lg mb-4">
-                                                <table className="min-w-full text-xs">
-                                                    <thead className="bg-gray-50">
-                                                        <tr>
-                                                            <th className="px-3 py-2 text-left">Company Name</th>
-                                                            <th className="px-3 py-2 text-left">HQ</th>
-                                                            <th className="px-3 py-2 text-left">Employees</th>
-                                                            <th className="px-3 py-2 text-left">Revenue</th>
-                                                            <th className="px-3 py-2 text-left">Seller</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {importPreview.rows.slice(0, 5).map((row, i) => (
-                                                            <tr key={i} className="border-t">
-                                                                <td className="px-3 py-2">{importPreview.mapping.companyName ? row[importPreview.mapping.companyName] : '-'}</td>
-                                                                <td className="px-3 py-2">{importPreview.mapping.hq ? row[importPreview.mapping.hq] : '-'}</td>
-                                                                <td className="px-3 py-2">{importPreview.mapping.employees ? row[importPreview.mapping.employees] : '-'}</td>
-                                                                <td className="px-3 py-2">{importPreview.mapping.revenue ? row[importPreview.mapping.revenue] : '-'}</td>
-                                                                <td className="px-3 py-2">{importPreview.mapping.seller ? row[importPreview.mapping.seller] : '-'}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-
-                                            <div className="flex justify-end gap-2 pt-4 border-t">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setImportPreview(null)}
-                                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                                                >
-                                                    Back
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { setShowImportModal(false); setImportPreview(null); }}
-                                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        if (!importPreview.mapping.companyName) {
-                                                            alert('Please map the Company Name column.');
-                                                            return;
-                                                        }
-                                                        const mapped = importPreview.rows.map(row => {
-                                                            const m = importPreview.mapping;
-                                                            return {
-                                                                companyName: m.companyName ? String(row[m.companyName] || '') : '',
-                                                                hq: m.hq ? String(row[m.hq] || '') : '',
-                                                                employees: m.employees ? row[m.employees] : 0,
-                                                                kcEmployees: m.kcEmployees ? row[m.kcEmployees] : null,
-                                                                revenue: m.revenue ? row[m.revenue] : 0,
-                                                                seller: m.seller ? String(row[m.seller] || '') : 'Unassigned',
-                                                                context: m.context ? String(row[m.context] || '') : '',
-                                                                skcNotes: m.skcNotes ? String(row[m.skcNotes] || '') : ''
-                                                            };
-                                                        }).filter(c => c.companyName.trim());
-                                                        handleImportCompanies(mapped);
-                                                    }}
-                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
-                                                >
-                                                    Import {importPreview.rows.length} Companies
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                        <MergeModal
+                            prospects={prospects}
+                            onClose={() => { setShowImportModal(false); setImportPreview(null); }}
+                            onApply={handleMergeApply}
+                        />
                     )}
                 </div>
             );
