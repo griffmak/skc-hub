@@ -7732,7 +7732,6 @@
                                             hq: formData.get('hq'),
                                             kcEmployees: formData.get('kcEmployees'),
                                             seller: formData.get('seller'),
-                                            status: formData.get('status'),
                                             context: formData.get('context'),
                                             skcNotes: formData.get('skcNotes')
                                         });
@@ -7797,8 +7796,7 @@
                                                 />
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
+                                            <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Seller</label>
                                                     <select
                                                         name="seller"
@@ -7810,22 +7808,6 @@
                                                         <option value="AD">AD</option>
                                                         <option value="SL">SL</option>
                                                     </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                                    <select
-                                                        name="status"
-                                                        defaultValue="Outreach"
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                    >
-                                                        <option value="Outreach">Outreach</option>
-                                                        <option value="Intro Discussion">Intro Discussion</option>
-                                                        <option value="Deck/Frameworks">Deck/Frameworks</option>
-                                                        <option value="Contract Negotiations">Contract Negotiations</option>
-                                                        <option value="HOLD">HOLD</option>
-                                                        <option value="Declined">Declined</option>
-                                                    </select>
-                                                </div>
                                             </div>
 
                                             <div>
@@ -7908,7 +7890,6 @@
                                             hq: formData.get('hq'),
                                             kcEmployees: formData.get('kcEmployees'),
                                             seller: formData.get('seller'),
-                                            status: formData.get('status'),
                                             context: formData.get('context'),
                                             skcNotes: formData.get('skcNotes')
                                         });
@@ -7972,35 +7953,18 @@
                                                 />
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Seller</label>
-                                                    <select
-                                                        name="seller"
-                                                        defaultValue={editingCompany.seller || 'Unassigned'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                    >
-                                                        <option value="Unassigned">Unassigned</option>
-                                                        <option value="MG">MG</option>
-                                                        <option value="AD">AD</option>
-                                                        <option value="SL">SL</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                                    <select
-                                                        name="status"
-                                                        defaultValue={editingCompany.status || 'Outreach'}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                    >
-                                                        <option value="Outreach">Outreach</option>
-                                                        <option value="Intro Discussion">Intro Discussion</option>
-                                                        <option value="Deck/Frameworks">Deck/Frameworks</option>
-                                                        <option value="Contract Negotiations">Contract Negotiations</option>
-                                                        <option value="HOLD">HOLD</option>
-                                                        <option value="Declined">Declined</option>
-                                                    </select>
-                                                </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Seller</label>
+                                                <select
+                                                    name="seller"
+                                                    defaultValue={editingCompany.seller || 'Unassigned'}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                >
+                                                    <option value="Unassigned">Unassigned</option>
+                                                    <option value="MG">MG</option>
+                                                    <option value="AD">AD</option>
+                                                    <option value="SL">SL</option>
+                                                </select>
                                             </div>
 
                                             <div>
@@ -8093,7 +8057,6 @@
                                                                     kcEmployees: headers.find(h => /kc.*employee|kansas.*city.*employee/i.test(h)) || '',
                                                                     revenue: headers.find(h => /revenue|sales|income/i.test(h)) || '',
                                                                     seller: headers.find(h => /seller|assigned|owner|rep/i.test(h)) || '',
-                                                                    status: headers.find(h => /status|stage|phase/i.test(h)) || '',
                                                                     context: headers.find(h => /context|description|notes|info/i.test(h)) || '',
                                                                     skcNotes: headers.find(h => /skc.*note|internal.*note/i.test(h)) || ''
                                                                 }});
@@ -8108,7 +8071,7 @@
                                             </div>
                                             <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                                                 <h3 className="font-semibold text-gray-900 mb-2">Expected Columns</h3>
-                                                <p className="text-sm text-gray-600">Your file should have columns for: Company Name, Headquarters, Employees, KC Employees, Revenue, Seller, Status, Context, SKC Notes</p>
+                                                <p className="text-sm text-gray-600">Your file should have columns for: Company Name, Headquarters, Employees, KC Employees, Revenue, Seller, Context, SKC Notes</p>
                                                 <p className="text-xs text-gray-500 mt-2">Column names will be auto-matched. You can adjust the mapping after upload.</p>
                                             </div>
                                         </div>
@@ -8127,7 +8090,6 @@
                                                     { key: 'kcEmployees', label: 'KC Employees' },
                                                     { key: 'revenue', label: 'Revenue' },
                                                     { key: 'seller', label: 'Seller' },
-                                                    { key: 'status', label: 'Status' },
                                                     { key: 'context', label: 'Context' },
                                                     { key: 'skcNotes', label: 'SKC Notes' }
                                                 ].map(field => (
@@ -8160,7 +8122,6 @@
                                                             <th className="px-3 py-2 text-left">Employees</th>
                                                             <th className="px-3 py-2 text-left">Revenue</th>
                                                             <th className="px-3 py-2 text-left">Seller</th>
-                                                            <th className="px-3 py-2 text-left">Status</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -8171,7 +8132,6 @@
                                                                 <td className="px-3 py-2">{importPreview.mapping.employees ? row[importPreview.mapping.employees] : '-'}</td>
                                                                 <td className="px-3 py-2">{importPreview.mapping.revenue ? row[importPreview.mapping.revenue] : '-'}</td>
                                                                 <td className="px-3 py-2">{importPreview.mapping.seller ? row[importPreview.mapping.seller] : '-'}</td>
-                                                                <td className="px-3 py-2">{importPreview.mapping.status ? row[importPreview.mapping.status] : '-'}</td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -8209,7 +8169,6 @@
                                                                 kcEmployees: m.kcEmployees ? row[m.kcEmployees] : null,
                                                                 revenue: m.revenue ? row[m.revenue] : 0,
                                                                 seller: m.seller ? String(row[m.seller] || '') : 'Unassigned',
-                                                                status: m.status ? String(row[m.status] || '') : 'Outreach',
                                                                 context: m.context ? String(row[m.context] || '') : '',
                                                                 skcNotes: m.skcNotes ? String(row[m.skcNotes] || '') : ''
                                                             };
@@ -8310,10 +8269,6 @@
                                                 ? `$${company.revenue.toLocaleString()}`
                                                 : 'N/A'}
                                         </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">Status:</span>
-                                        <span className="ml-2 font-medium">{company.status}</span>
                                     </div>
                                 </div>
                             </div>
