@@ -6252,8 +6252,7 @@
             
             // Modal states
             const [showAddModal, setShowAddModal] = useState(false);
-            const [showEditModal, setShowEditModal] = useState(false);
-            const [editingCompany, setEditingCompany] = useState(null);
+
             const [showImportModal, setShowImportModal] = useState(false);
             const [importPreview, setImportPreview] = useState(null);
             const [companyNotes, setCompanyNotes] = useState(() => {
@@ -6300,24 +6299,6 @@
                 }
             };
 
-            // Edit company
-            const handleEditCompany = (formData) => {
-                setProspects(prev => prev.map(p =>
-                    p.id === editingCompany.id ? {
-                        ...p,
-                        companyName: formData.companyName,
-                        seller: formData.seller || 'Unassigned',
-                        hq: formData.hq || '',
-                        employees: parseInt(formData.employees) || 0,
-                        kcEmployees: formData.kcEmployees ? parseInt(formData.kcEmployees) : null,
-                        revenue: formData.revenue ? parseInt(formData.revenue) : 0,
-                        context: formData.context || '',
-                        skcNotes: formData.skcNotes || ''
-                    } : p
-                ));
-                setShowEditModal(false);
-                setEditingCompany(null);
-            };
 
             // Import companies from Excel data
             const handleImportCompanies = (companies) => {
@@ -7908,150 +7889,6 @@
                         </div>
                     )}
 
-
-                    {/* Edit Company Modal */}
-                    {showEditModal && editingCompany && (
-                        <div className="modal-overlay" onClick={() => { setShowEditModal(false); setEditingCompany(null); }}>
-                            <div className="modal-content" style={{width: '600px', maxWidth: '90%'}} onClick={(e) => e.stopPropagation()}>
-                                <div className="p-6">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h2 className="text-2xl font-bold text-gray-900">Edit Company</h2>
-                                        <button
-                                            onClick={() => { setShowEditModal(false); setEditingCompany(null); }}
-                                            className="text-gray-400 hover:text-gray-600 text-2xl"
-                                        >
-                                            x
-                                        </button>
-                                    </div>
-
-                                    <form onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const formData = new FormData(e.target);
-                                        handleEditCompany({
-                                            companyName: formData.get('companyName'),
-                                            employees: formData.get('employees'),
-                                            revenue: formData.get('revenue'),
-                                            hq: formData.get('hq'),
-                                            kcEmployees: formData.get('kcEmployees'),
-                                            seller: formData.get('seller'),
-                                            context: formData.get('context'),
-                                            skcNotes: formData.get('skcNotes')
-                                        });
-                                    }}>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Company Name <span className="text-red-600">*</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="companyName"
-                                                    required
-                                                    defaultValue={editingCompany.companyName}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Number of Employees
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    name="employees"
-                                                    defaultValue={editingCompany.employees || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Annual Revenue
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    name="revenue"
-                                                    defaultValue={editingCompany.revenue || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                />
-                                                <p className="text-xs text-gray-500 mt-1">Enter in dollars (e.g., 50000000 for $50M)</p>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Headquarters</label>
-                                                <input
-                                                    type="text"
-                                                    name="hq"
-                                                    defaultValue={editingCompany.hq || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">KC Employees</label>
-                                                <input
-                                                    type="number"
-                                                    name="kcEmployees"
-                                                    defaultValue={editingCompany.kcEmployees || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Seller</label>
-                                                <select
-                                                    name="seller"
-                                                    defaultValue={editingCompany.seller || 'Unassigned'}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                >
-                                                    <option value="Unassigned">Unassigned</option>
-                                                    <option value="MG">MG</option>
-                                                    <option value="AD">AD</option>
-                                                    <option value="SL">SL</option>
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Company Context</label>
-                                                <textarea
-                                                    name="context"
-                                                    defaultValue={editingCompany.context || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                    rows="3"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">SKC Notes</label>
-                                                <textarea
-                                                    name="skcNotes"
-                                                    defaultValue={editingCompany.skcNotes || ''}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                    rows="2"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-                                            <button
-                                                type="button"
-                                                onClick={() => { setShowEditModal(false); setEditingCompany(null); }}
-                                                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
-                                            >
-                                                Save Changes
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Import Excel Modal */}
                     {showImportModal && (
