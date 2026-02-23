@@ -6475,7 +6475,6 @@
             const [showAddModal, setShowAddModal] = useState(false);
 
             const [showImportModal, setShowImportModal] = useState(false);
-            const [importPreview, setImportPreview] = useState(null);
             const [companyNotes, setCompanyNotes] = useState(() => {
                 const saved = localStorage.getItem('skc_company_notes');
                 return saved ? JSON.parse(saved) : {};
@@ -6538,7 +6537,6 @@
                 }));
                 setProspects(prev => [...prev, ...newCompanies]);
                 setShowImportModal(false);
-                setImportPreview(null);
             };
 
             const handleMergeApply = (changes) => {
@@ -8141,7 +8139,7 @@
                     {showImportModal && (
                         <MergeModal
                             prospects={prospects}
-                            onClose={() => { setShowImportModal(false); setImportPreview(null); }}
+                            onClose={() => { setShowImportModal(false); }}
                             onApply={handleMergeApply}
                         />
                     )}
